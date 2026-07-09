@@ -1490,6 +1490,9 @@ def video_feed():
 @app.route('/video_snapshot')
 def video_snapshot():
     camera_id = request.args.get('camera', 0, type=int)
+    camera = get_camera(camera_id)
+    if camera is None:
+        return "摄像头不可用 (索引: {})".format(camera_id), 503
     with _cameras_lock:
         cap = _cameras.get(camera_id)
         if cap is None or not cap.isOpened():
