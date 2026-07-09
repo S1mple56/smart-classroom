@@ -1,0 +1,9 @@
+path: datasets/bvn
+train: datasets/bvn/images/train
+val: datasets/bvn/images/val
+nc: 4
+names:
+  0: hand_up
+  1: abnormal
+  2: sleep
+  3: phone

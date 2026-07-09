@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>智瞳课堂 - 登录</title>
+<style>
+    :root {
+        --primary: #4A90D9;
+        --primary-dark: #357ABD;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+        background: url('/static/cover.png') center/cover no-repeat fixed;
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        position: relative;
+    }
+    body::before {
+        content: '';
+        position: fixed;
+        inset: 0;
+        background: rgba(0,0,0,0.35);
+        z-index: 0;
+    }
+    .login-box {
+        background: #fff;
+        border-radius: 16px;
+        padding: 36px 40px 32px;
+        width: 420px;
+        max-width: 94vw;
+        box-shadow: 0 20px 60px rgba(0,0,0,0.15);
+        animation: fadeIn 0.5s ease;
+        position: relative;
+        z-index: 1;
+    }
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(-20px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+    .login-logo {
+        text-align: center;
+        margin-bottom: 24px;
+    }
+    .login-logo .icon {
+        width: 56px; height: 56px;
+        background: linear-gradient(135deg, var(--primary) 0%, #764ba2 100%);
+        border-radius: 14px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 28px;
+        color: #fff;
+        margin-bottom: 10px;
+    }
+    .login-logo h1 {
+        font-size: 22px;
+        color: #2c3e50;
+        font-weight: 600;
+    }
+    .login-logo p {
+        font-size: 13px;
+        color: #999;
+        margin-top: 3px;
+    }
+
+    /* ── Tab 栏 ── */
+    .tab-bar {
+        display: flex;
+        border-bottom: 2px solid #eee;
+        margin-bottom: 24px;
+    }
+    .tab-btn {
+        flex: 1;
+        padding: 10px 0;
+        font-size: 15px;
+        font-weight: 500;
+        color: #999;
+        background: none;
+        border: none;
+        cursor: pointer;
+        border-bottom: 2px solid transparent;
+        margin-bottom: -2px;
+        transition: all 0.2s;
+    }
+    .tab-btn.active {
+        color: var(--primary);
+        border-bottom-color: var(--primary);
+    }
+    .tab-btn:hover { color: #555; }
+
+    /* ── 面板 ── */
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; animation: fadeIn 0.3s ease; }
+
+    /* ── 表单 ── */
+    .form-group {
+        margin-bottom: 18px;
+    }
+    .form-group label {
+        display: block;
+        font-size: 13px;
+        color: #555;
+        margin-bottom: 5px;
+        font-weight: 500;
+    }
+    .form-group input {
+        width: 100%;
+        padding: 11px 14px;
+        border: 1.5px solid #e0e0e0;
+        border-radius: 8px;
+        font-size: 14px;
+        transition: border-color 0.2s, box-shadow 0.2s;
+        outline: none;
+    }
+    .form-group input:focus {
+        border-color: var(--primary);
+        box-shadow: 0 0 0 3px rgba(74,144,217,0.1);
+    }
+    .remember-me {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 13px;
+        color: #666;
+        margin-bottom: 12px;
+        cursor: pointer;
+        user-select: none;
+    }
+    .remember-me input[type="checkbox"] {
+        width: 16px;
+        height: 16px;
+        accent-color: var(--primary);
+        cursor: pointer;
+    }
+    .btn-submit {
+        width: 100%;
+        padding: 12px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: #fff;
+        border: none;
+        border-radius: 8px;
+        font-size: 16px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: opacity 0.2s, transform 0.1s;
+        margin-top: 4px;
+    }
+    .btn-submit:hover { opacity: 0.92; }
+    .btn-submit:active { transform: scale(0.98); }
+    .btn-submit:disabled { opacity: 0.6; cursor: not-allowed; }
+    .msg {
+        text-align: center;
+        font-size: 13px;
+        margin-top: 14px;
+        min-height: 20px;
+        transition: color 0.2s;
+    }
+    .msg.success { color: #27ae60; }
+    .msg.error { color: #e74c3c; }
+    .tips {
+        text-align: center;
+        font-size: 12px;
+        color: #bbb;
+        margin-top: 24px;
+    }
+</style>
+</head>
+<body>
+
+<div class="login-box">
+    <div class="login-logo">
+        <div class="icon">&#x1f393;</div>
+        <h1>智瞳课堂</h1>
+        <p>人脸考勤 &middot; 行为检测 &middot; 智能管理</p>
+    </div>
+
+    <!-- Tab 栏 -->
+    <div class="tab-bar">
+        <button class="tab-btn active" data-tab="login">登 录</button>
+        <button class="tab-btn" data-tab="changepwd">修改密码</button>
+        <button class="tab-btn" data-tab="forgot">忘记密码</button>
+    </div>
+
+    <!-- Tab 1: 登录 -->
+    <div class="tab-panel active" id="panel-login">
+        <form id="loginForm" autocomplete="on">
+            <div class="form-group">
+                <label for="loginUser">用户名</label>
+                <input type="text" id="loginUser" placeholder="请输入用户名" autocomplete="username" required>
+            </div>
+            <div class="form-group">
+                <label for="loginPass">密码</label>
+                <input type="password" id="loginPass" placeholder="请输入密码" autocomplete="current-password" required>
+            </div>
+            <label class="remember-me">
+                <input type="checkbox" id="rememberMe"> 记住密码
+            </label>
+            <button type="submit" class="btn-submit" id="loginBtn">登 录</button>
+            <div class="msg" id="loginMsg"></div>
+        </form>
+    </div>
+
+    <!-- Tab 2: 修改密码 -->
+    <div class="tab-panel" id="panel-changepwd">
+        <form id="chpwdForm" autocomplete="on">
+            <div class="form-group">
+                <label for="chpwdUser">用户名</label>
+                <input type="text" id="chpwdUser" placeholder="请输入您的用户名" autocomplete="username" required>
+            </div>
+            <div class="form-group">
+                <label for="chpwdOld">原密码</label>
+                <input type="password" id="chpwdOld" placeholder="请输入原密码" autocomplete="current-password" required>
+            </div>
+            <div class="form-group">
+                <label for="chpwdNew">新密码</label>
+                <input type="password" id="chpwdNew" placeholder="请输入新密码（至少4位）" required>
+            </div>
+            <div class="form-group">
+                <label for="chpwdConfirm">确认新密码</label>
+                <input type="password" id="chpwdConfirm" placeholder="请再次输入新密码" required>
+            </div>
+            <button type="submit" class="btn-submit" id="chpwdBtn">确认修改</button>
+            <div class="msg" id="chpwdMsg"></div>
+        </form>
+    </div>
+
+    <!-- Tab 3: 忘记密码 -->
+    <div class="tab-panel" id="panel-forgot">
+        <p style="font-size:13px;color:#888;margin-bottom:16px;text-align:center;">
+            输入要重置的用户名和主控密钥，密码将重置为 <b>123456</b>
+        </p>
+        <form id="forgotForm" autocomplete="off">
+            <div class="form-group">
+                <label for="forgotUser">要重置的用户名</label>
+                <input type="text" id="forgotUser" placeholder="请输入用户名" required>
+            </div>
+            <div class="form-group">
+                <label for="forgotKey">主控密钥</label>
+                <input type="password" id="forgotKey" placeholder="请输入主控密钥" required>
+            </div>
+            <button type="submit" class="btn-submit" id="forgotBtn">重置密码</button>
+            <div class="msg" id="forgotMsg"></div>
+        </form>
+    </div>
+
+    <div class="tips">基于 RK3588 AI 开发板 &middot; YOLOv8 &middot; RKNN NPU 加速</div>
+</div>
+
+<script>
+// ── Tab 切换 ──
+document.querySelectorAll('.tab-btn').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+        var tab = this.dataset.tab;
+        document.querySelectorAll('.tab-btn').forEach(function(b) { b.classList.remove('active'); });
+        document.querySelectorAll('.tab-panel').forEach(function(p) { p.classList.remove('active'); });
+        this.classList.add('active');
+        document.getElementById('panel-' + tab).classList.add('active');
+        // 清空提示
+        document.querySelectorAll('.msg').forEach(function(m) { m.textContent = ''; m.className = 'msg'; });
+    });
+});
+
+// ── 登录 ──
+(function() {
+    var form = document.getElementById('loginForm');
+    var btn = document.getElementById('loginBtn');
+    var msg = document.getElementById('loginMsg');
+    var rememberMe = document.getElementById('rememberMe');
+    var loginUser = document.getElementById('loginUser');
+    var loginPass = document.getElementById('loginPass');
+
+    // 页面加载时恢复保存的密码
+    var saved = localStorage.getItem('login_saved');
+    if (saved) {
+        try {
+            var d = JSON.parse(saved);
+            loginUser.value = d.username || '';
+            loginPass.value = d.password || '';
+            rememberMe.checked = true;
+        } catch(e) {}
+    }
+
+    form.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        var username = loginUser.value.trim();
+        var password = loginPass.value;
+        if (!username || !password) {
+            setMsg(msg, '请输入用户名和密码', 'error');
+            return;
+        }
+        btn.disabled = true; btn.textContent = '登录中...'; setMsg(msg, '', '');
+        try {
+            var res = await fetch('/api/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username: username, password: password, remember: rememberMe.checked })
+            });
+            var data = await res.json();
+            if (data.ok) {
+                if (rememberMe.checked) {
+                    localStorage.setItem('login_saved', JSON.stringify({username: loginUser.value, password: loginPass.value}));
+                } else {
+                    localStorage.removeItem('login_saved');
+                }
+                window.location.href = '/';
+            }
+            else { setMsg(msg, data.error || '登录失败', 'error'); }
+        } catch (e) { setMsg(msg, '网络错误，请重试', 'error'); }
+        btn.disabled = false; btn.textContent = '登 录';
+    });
+
+    // Enter 键也提交
+    document.getElementById('loginPass').addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') form.dispatchEvent(new Event('submit'));
+    });
+})();
+
+// ── 修改密码 ──
+(function() {
+    var form = document.getElementById('chpwdForm');
+    var btn = document.getElementById('chpwdBtn');
+    var msg = document.getElementById('chpwdMsg');
+
+    form.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        var username = document.getElementById('chpwdUser').value.trim();
+        var oldPwd   = document.getElementById('chpwdOld').value;
+        var newPwd   = document.getElementById('chpwdNew').value;
+        var confirm  = document.getElementById('chpwdConfirm').value;
+
+        if (!username)  { setMsg(msg, '请输入用户名', 'error'); return; }
+        if (!oldPwd)    { setMsg(msg, '请输入原密码', 'error'); return; }
+        if (newPwd.length < 4) { setMsg(msg, '新密码至少4位', 'error'); return; }
+        if (newPwd !== confirm) { setMsg(msg, '两次输入的新密码不一致', 'error'); return; }
+
+        btn.disabled = true; btn.textContent = '修改中...'; setMsg(msg, '', '');
+        try {
+            var res = await fetch('/api/change-password', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    username: username,
+                    old_password: oldPwd,
+                    new_password: newPwd
+                })
+            });
+            var data = await res.json();
+            if (data.ok) {
+                setMsg(msg, '密码修改成功！请切换到登录页登录', 'success');
+                form.reset();
+            } else {
+                setMsg(msg, data.error || '修改失败', 'error');
+            }
+        } catch (e) { setMsg(msg, '网络错误，请重试', 'error'); }
+        btn.disabled = false; btn.textContent = '确认修改';
+    });
+})();
+
+function setMsg(el, text, cls) {
+    el.textContent = text;
+    el.className = 'msg ' + (cls || '');
+}
+
+// ── 忘记密码 ──
+(function() {
+    var form = document.getElementById('forgotForm');
+    var btn = document.getElementById('forgotBtn');
+    var msg = document.getElementById('forgotMsg');
+
+    form.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        var username = document.getElementById('forgotUser').value.trim();
+        var masterKey = document.getElementById('forgotKey').value;
+        if (!username) { setMsg(msg, '请输入用户名', 'error'); return; }
+        if (!masterKey) { setMsg(msg, '请输入主控密钥', 'error'); return; }
+        btn.disabled = true; btn.textContent = '重置中...'; setMsg(msg, '', '');
+        try {
+            var res = await fetch('/api/admin/reset-password', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    username: username,
+                    master_key: masterKey,
+                    new_password: '123456'
+                })
+            });
+            var data = await res.json();
+            if (data.ok) {
+                setMsg(msg, '密码已重置为 123456，请到登录页登录', 'success');
+                form.reset();
+            } else {
+                setMsg(msg, data.error || '重置失败', 'error');
+            }
+        } catch (e) { setMsg(msg, '网络错误，请重试', 'error'); }
+        btn.disabled = false; btn.textContent = '重置密码';
+    });
+})();
+</script>
+
+</body>
+</html>

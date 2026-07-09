@@ -1,0 +1,68 @@
+
+# Python
+__pycache__/
+*.py[cod]
+*.class
+*.so
+.Python
+env/
+venv/
+.venv/
+pip-log.txt
+pip-delete-this-directory.txt
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+log/
+
+# Temp files
+*.tmp
+*.temp
+data/temp_*/
+
+# Model files (too large)
+*.pt
+*.onnx
+*.rknn
+*.dat
+
+# Archives
+*.zip
+*.tar.gz
+*.bz2
+
+# Large files
+bvn.zip
+*.avi
+*.mp4
+*.pt
+*.onnx
+*.rknn
+*.pdparams
+*.dat
+
+# Large directories
+datasets/
+bvn.zip
+TRY/
+models/
+model/
+rknn_convert/
+data/
+*.pt
+*.onnx
+*.rknn
+*.pdparams
+*.dat
+*.avi
+*.mp4

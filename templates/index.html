@@ -1,0 +1,3027 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>智瞳课堂</title>
+<style>
+:root {
+    --primary: #4A90D9;
+    --success: #27ae60;
+    --warning: #f39c12;
+    --danger: #e74c3c;
+    --sidebar-bg: #1E2A3A;
+    --sidebar-active: rgba(74,144,217,0.2);
+    --card-bg: #ffffff;
+    --bg: #f0f2f7;
+    --text: #333;
+    --text-light: #666;
+    --border: #e0e0e0;
+    --shadow: 0 2px 8px rgba(0,0,0,0.08);
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    display: flex;
+    min-height: 100vh;
+    overflow-x: hidden;
+}
+
+/* ===== Sidebar ===== */
+.sidebar {
+    width: 240px;
+    min-width: 240px;
+    background: var(--sidebar-bg);
+    color: #ccc;
+    display: flex;
+    flex-direction: column;
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    z-index: 1000;
+    transition: transform 0.3s ease;
+}
+
+.sidebar-header {
+    padding: 24px 20px;
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+}
+
+.sidebar-header h1 {
+    font-size: 18px;
+    color: #fff;
+    font-weight: 600;
+}
+
+.sidebar-header p {
+    font-size: 12px;
+    color: #8899aa;
+    margin-top: 4px;
+}
+
+.sidebar-nav {
+    flex: 1;
+    padding: 12px 0;
+    overflow-y: auto;
+}
+
+.nav-group {
+    margin-bottom: 8px;
+}
+
+.nav-group-title {
+    padding: 8px 20px 4px;
+    font-size: 11px;
+    text-transform: uppercase;
+    color: #5a6a7a;
+    letter-spacing: 1px;
+}
+
+.nav-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 20px;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-size: 14px;
+    color: #b0bfcf;
+    border-left: 3px solid transparent;
+}
+
+.nav-item:hover {
+    background: rgba(255,255,255,0.04);
+    color: #fff;
+}
+
+.nav-item.active {
+    background: var(--sidebar-active);
+    color: var(--primary);
+    border-left-color: var(--primary);
+}
+
+.nav-icon {
+    width: 20px;
+    text-align: center;
+    font-size: 14px;
+}
+
+/* ===== Main Content ===== */
+.main {
+    flex: 1;
+    margin-left: 240px;
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+}
+
+.header {
+    background: var(--card-bg);
+    padding: 16px 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.05);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+}
+
+.header-title {
+    font-size: 20px;
+    font-weight: 600;
+    color: var(--text);
+}
+
+.header-clock {
+    font-size: 14px;
+    color: var(--text-light);
+    font-variant-numeric: tabular-nums;
+}
+
+/* ── 用户下拉菜单 ── */
+.user-dropdown { position: relative; }
+.user-dropdown-btn {
+    padding: 6px 14px;
+    font-size: 13px;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    background: #fff;
+    color: #333;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+.user-dropdown-btn:hover { border-color: var(--primary); }
+.user-dropdown-menu {
+    display: none;
+    position: absolute;
+    right: 0;
+    top: 100%;
+    margin-top: 6px;
+    background: #fff;
+    border: 1px solid #eee;
+    border-radius: 8px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+    min-width: 140px;
+    z-index: 1000;
+    overflow: hidden;
+}
+.user-dropdown-menu.show { display: block; }
+.user-dropdown-menu button {
+    display: block;
+    width: 100%;
+    padding: 10px 16px;
+    font-size: 13px;
+    text-align: left;
+    border: none;
+    background: none;
+    cursor: pointer;
+    color: #333;
+    transition: background 0.15s;
+}
+.user-dropdown-menu button:hover { background: #f5f7fa; }
+.user-dropdown-menu button:last-child { color: #e74c3c; border-top: 1px solid #f0f0f0; }
+
+.menu-toggle {
+    display: none;
+    background: none;
+    border: none;
+    font-size: 24px;
+    cursor: pointer;
+    color: var(--text);
+    padding: 4px 8px;
+}
+
+.content {
+    flex: 1;
+    padding: 24px;
+}
+
+/* ===== Pages ===== */
+.page {
+    display: none;
+}
+
+.page--active {
+    display: block;
+}
+
+/* ===== Cards ===== */
+.card {
+    background: var(--card-bg);
+    border-radius: 10px;
+    padding: 20px;
+    box-shadow: var(--shadow);
+    margin-bottom: 20px;
+}
+
+.card-title {
+    font-size: 16px;
+    font-weight: 600;
+    margin-bottom: 16px;
+    color: var(--text);
+}
+
+/* ===== Stat Cards ===== */
+.stat-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 16px;
+    margin-bottom: 20px;
+}
+
+.stat-card {
+    background: var(--card-bg);
+    border-radius: 10px;
+    padding: 20px;
+    box-shadow: var(--shadow);
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+}
+
+.stat-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+}
+
+.stat-card.primary::before { background: var(--primary); }
+.stat-card.success::before { background: var(--success); }
+.stat-card.warning::before { background: var(--warning); }
+.stat-card.danger::before { background: var(--danger); }
+
+.stat-value {
+    font-size: 32px;
+    font-weight: 700;
+    margin: 8px 0 4px;
+}
+
+.stat-card.primary .stat-value { color: var(--primary); }
+.stat-card.success .stat-value { color: var(--success); }
+.stat-card.warning .stat-value { color: var(--warning); }
+.stat-card.danger .stat-value { color: var(--danger); }
+
+.stat-label {
+    font-size: 13px;
+    color: var(--text-light);
+}
+
+/* ===== CNN 行为分类卡片 ===== */
+.cnn-result-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 24px 16px;
+    margin-bottom: 16px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: 12px;
+    color: #fff;
+    animation: modalIn 0.3s ease;
+}
+.cnn-result-icon { font-size: 36px; margin-bottom: 8px; }
+.cnn-result-action { font-size: 28px; font-weight: 700; letter-spacing: 2px; }
+.cnn-result-conf { font-size: 15px; margin-top: 6px; opacity: 0.9; }
+.cnn-result-note { font-size: 11px; margin-top: 10px; opacity: 0.65; }
+
+/* ===== Buttons ===== */
+.btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 16px;
+    border: none;
+    border-radius: 6px;
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-family: inherit;
+}
+
+.btn-primary { background: var(--primary); color: #fff; }
+.btn-primary:hover { background: #3a7fc8; }
+.btn-success { background: var(--success); color: #fff; }
+.btn-success:hover { background: #219a52; }
+.btn-warning { background: var(--warning); color: #fff; }
+.btn-warning:hover { background: #d68910; }
+.btn-danger { background: var(--danger); color: #fff; }
+.btn-danger:hover { background: #c0392b; }
+.btn-outline {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text);
+}
+.btn-outline:hover { background: #f5f5f5; }
+
+.btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.btn-group {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+/* ===== Forms ===== */
+.form-group {
+    margin-bottom: 16px;
+}
+
+.form-label {
+    display: block;
+    font-size: 13px;
+    color: var(--text-light);
+    margin-bottom: 6px;
+    font-weight: 500;
+}
+
+.form-input, .form-select {
+    width: 100%;
+    padding: 8px 12px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    font-size: 14px;
+    font-family: inherit;
+    transition: border-color 0.2s;
+    background: #fff;
+}
+
+.form-input:focus, .form-select:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(74,144,217,0.1);
+}
+
+.form-row {
+    display: flex;
+    gap: 12px;
+}
+
+.form-row .form-group {
+    flex: 1;
+}
+
+/* ===== Tables ===== */
+.table-wrap {
+    overflow-x: auto;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+th, td {
+    padding: 10px 14px;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+    font-size: 13px;
+}
+
+th {
+    background: #f8f9fa;
+    font-weight: 600;
+    color: var(--text-light);
+    position: sticky;
+    top: 0;
+}
+
+tr:hover td {
+    background: #f8f9fb;
+}
+
+/* ===== Camera Area ===== */
+.camera-container {
+    position: relative;
+    background: #000;
+    border-radius: 10px;
+    overflow: hidden;
+    aspect-ratio: 16/9;
+    max-height: 480px;
+    margin-bottom: 16px;
+}
+
+.camera-container video,
+.camera-container canvas {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+}
+
+.camera-container video {
+    display: block;
+}
+
+.overlay-canvas {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+}
+
+.camera-controls {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+}
+
+.camera-controls label {
+    font-size: 13px;
+    color: var(--text-light);
+}
+
+.camera-controls input[type="number"] {
+    width: 80px;
+    padding: 6px 10px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    font-size: 13px;
+}
+
+/* ===== Tabs ===== */
+.tabs {
+    display: flex;
+    border-bottom: 2px solid var(--border);
+    margin-bottom: 20px;
+}
+
+.tab {
+    padding: 10px 20px;
+    cursor: pointer;
+    font-size: 14px;
+    color: var(--text-light);
+    border-bottom: 2px solid transparent;
+    margin-bottom: -2px;
+    transition: all 0.2s;
+}
+
+.tab:hover {
+    color: var(--primary);
+}
+
+.tab.active {
+    color: var(--primary);
+    border-bottom-color: var(--primary);
+    font-weight: 600;
+}
+
+.tab-content {
+    display: none;
+}
+
+.tab-content.active {
+    display: block;
+}
+
+/* ===== Student Cards ===== */
+.student-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 16px;
+}
+
+.student-card {
+    background: var(--card-bg);
+    border-radius: 10px;
+    padding: 16px;
+    box-shadow: var(--shadow);
+    display: flex;
+    align-items: center;
+    gap: 14px;
+}
+
+.student-avatar {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background: var(--primary);
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    font-weight: 600;
+    flex-shrink: 0;
+}
+
+.student-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.student-name {
+    font-weight: 600;
+    font-size: 15px;
+}
+
+.student-meta {
+    font-size: 12px;
+    color: var(--text-light);
+    margin-top: 2px;
+}
+
+/* ===== Dropzone ===== */
+.dropzone {
+    border: 2px dashed var(--border);
+    border-radius: 10px;
+    padding: 32px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    color: var(--text-light);
+}
+
+.dropzone:hover,
+.dropzone.dragover {
+    border-color: var(--primary);
+    background: rgba(74,144,217,0.04);
+    color: var(--primary);
+}
+
+.dropzone input[type="file"] {
+    display: none;
+}
+
+/* ===== Toast ===== */
+.toast-container {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 9999;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.toast {
+    background: var(--card-bg);
+    padding: 12px 20px;
+    border-radius: 8px;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    animation: slideIn 0.3s ease;
+    max-width: 360px;
+    border-left: 4px solid var(--primary);
+}
+
+.toast.success { border-left-color: var(--success); }
+.toast.warning { border-left-color: var(--warning); }
+.toast.error { border-left-color: var(--danger); }
+
+/* ===== Confirm Modal ===== */
+.modal-overlay {
+    display: none;
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0,0,0,0.5); z-index: 10000;
+    justify-content: center; align-items: center;
+}
+.modal-overlay.active { display: flex; }
+.modal-dialog {
+    background: #fff; border-radius: 12px; padding: 28px 32px;
+    max-width: 420px; width: 90%; box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+    animation: modalIn 0.25s ease;
+}
+.modal-dialog h3 { margin: 0 0 12px 0; font-size: 18px; color: #2c3e50; }
+.modal-dialog p { margin: 0 0 24px 0; font-size: 14px; color: #666; line-height: 1.6; }
+.modal-dialog .modal-btns { display: flex; gap: 12px; justify-content: flex-end; }
+.modal-dialog .modal-btns button {
+    padding: 8px 24px; border-radius: 6px; border: none; font-size: 14px;
+    cursor: pointer; transition: opacity 0.2s;
+}
+.modal-dialog .modal-btns button:hover { opacity: 0.85; }
+.modal-btn-cancel { background: #ecf0f1; color: #555; }
+.modal-btn-confirm { background: var(--primary); color: #fff; }
+@keyframes modalIn {
+    from { transform: scale(0.9); opacity: 0; }
+    to { transform: scale(1); opacity: 1; }
+}
+
+/* ── 小按钮（用户管理表格内） ── */
+.btn-sm {
+    padding: 4px 12px;
+    font-size: 12px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    background: #fff;
+    color: var(--primary);
+    cursor: pointer;
+    transition: all 0.15s;
+}
+.btn-sm:hover { background: var(--primary); color: #fff; border-color: var(--primary); }
+.btn-sm-del { color: #e74c3c; }
+.btn-sm-del:hover { background: #e74c3c; color: #fff; border-color: #e74c3c; }
+
+@keyframes slideIn {
+    from { transform: translateX(100%); opacity: 0; }
+    to { transform: translateX(0); opacity: 1; }
+}
+
+@keyframes slideOut {
+    from { transform: translateX(0); opacity: 1; }
+    to { transform: translateX(100%); opacity: 0; }
+}
+
+/* ===== Status Bar ===== */
+.status-bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    color: var(--text-light);
+    padding: 8px 0;
+}
+
+.status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #ccc;
+}
+
+.status-dot.online { background: var(--success); }
+.status-dot.offline { background: var(--danger); }
+
+/* ===== Empty State ===== */
+.empty-state {
+    text-align: center;
+    padding: 48px 20px;
+    color: var(--text-light);
+}
+
+.empty-state .empty-icon {
+    font-size: 48px;
+    margin-bottom: 12px;
+    opacity: 0.4;
+}
+
+.empty-state p {
+    font-size: 14px;
+}
+
+/* ===== Inline Selector ===== */
+.selector-row {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+}
+
+.selector-row .form-select {
+    flex: 1;
+    min-width: 200px;
+}
+
+/* ===== Badge ===== */
+.badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-size: 11px;
+    font-weight: 600;
+}
+
+.badge-success { background: rgba(39,174,96,0.12); color: var(--success); }
+.badge-warning { background: rgba(243,156,18,0.12); color: var(--warning); }
+.badge-danger { background: rgba(231,76,60,0.12); color: var(--danger); }
+.badge-primary { background: rgba(74,144,217,0.12); color: var(--primary); }
+
+/* ===== Photo list in student detail ===== */
+.photo-list {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-top: 8px;
+}
+
+.photo-thumb {
+    width: 48px;
+    height: 48px;
+    border-radius: 6px;
+    object-fit: cover;
+    border: 1px solid var(--border);
+    cursor: pointer;
+    transition: transform 0.2s;
+}
+.photo-thumb:hover {
+    transform: scale(1.15);
+    border-color: var(--primary);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+}
+
+/* ===== Photo Lightbox ===== */
+.photo-lightbox {
+    display: none;
+    position: fixed;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0,0,0,0.88);
+    z-index: 10001;
+    justify-content: center;
+    align-items: center;
+    cursor: pointer;
+    animation: fadeIn 0.2s ease;
+}
+.photo-lightbox.active { display: flex; }
+.photo-lightbox-img {
+    max-width: 92vw;
+    max-height: 92vh;
+    object-fit: contain;
+    border-radius: 8px;
+    box-shadow: 0 8px 40px rgba(0,0,0,0.5);
+}
+.photo-lightbox-close {
+    position: absolute;
+    top: 20px; right: 28px;
+    font-size: 32px;
+    color: #fff;
+    cursor: pointer;
+    opacity: 0.7;
+    transition: opacity 0.2s;
+    background: none;
+    border: none;
+    line-height: 1;
+}
+.photo-lightbox-close:hover { opacity: 1; }
+.photo-lightbox-nav {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 40px;
+    color: #fff;
+    cursor: pointer;
+    opacity: 0.6;
+    background: none;
+    border: none;
+    padding: 16px;
+    transition: opacity 0.2s;
+}
+.photo-lightbox-nav:hover { opacity: 1; }
+.photo-lightbox-prev { left: 12px; }
+.photo-lightbox-next { right: 12px; }
+.photo-lightbox-counter {
+    position: absolute;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    color: #fff;
+    font-size: 14px;
+    opacity: 0.7;
+}
+
+/* ===== Student Card Expanded ===== */
+.student-card { cursor: default; }
+.student-card .expand-btn {
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 2px 8px;
+    font-size: 12px;
+    cursor: pointer;
+    color: var(--text-light);
+    transition: all 0.15s;
+    margin-left: auto;
+}
+.student-card .expand-btn:hover { border-color: var(--primary); color: var(--primary); }
+.student-photo-grid {
+    display: none;
+    padding: 12px 0 0;
+    border-top: 1px solid var(--border);
+    margin-top: 12px;
+}
+.student-photo-grid.show { display: block; }
+.student-photo-grid .photo-grid-inner {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+.student-photo-grid .photo-item {
+    position: relative;
+    display: inline-block;
+}
+.student-photo-grid .photo-item .photo-thumb {
+    width: 72px;
+    height: 72px;
+}
+.student-photo-grid .photo-item .photo-del-btn {
+    position: absolute;
+    top: -4px;
+    right: -4px;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: var(--danger);
+    color: #fff;
+    border: 2px solid #fff;
+    font-size: 10px;
+    line-height: 14px;
+    text-align: center;
+    cursor: pointer;
+    display: none;
+    padding: 0;
+}
+.student-photo-grid .photo-item:hover .photo-del-btn { display: block; }
+
+/* ===== Responsive ===== */
+@media (max-width: 768px) {
+    .sidebar {
+        transform: translateX(-100%);
+    }
+    .sidebar.open {
+        transform: translateX(0);
+    }
+    .main {
+        margin-left: 0;
+    }
+    .menu-toggle {
+        display: block;
+    }
+    .stat-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    .form-row {
+        flex-direction: column;
+    }
+}
+/* ── AI 聊天悬浮组件 ── */
+.chat-fab {
+    position: fixed; bottom: 24px; right: 24px;
+    width: 52px; height: 52px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: #fff; font-size: 22px; border: none;
+    cursor: pointer; box-shadow: 0 4px 16px rgba(102,126,234,0.4);
+    z-index: 9999; display: flex; align-items: center; justify-content: center;
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+.chat-fab:hover { transform: scale(1.08); box-shadow: 0 6px 20px rgba(102,126,234,0.5); }
+.chat-panel {
+    position: fixed; bottom: 88px; right: 24px;
+    width: 370px; max-width: 90vw; height: 500px; max-height: 70vh;
+    background: #fff; border-radius: 14px; box-shadow: 0 12px 40px rgba(0,0,0,0.15);
+    z-index: 9998; display: none; flex-direction: column; overflow: hidden;
+    animation: modalIn 0.25s ease;
+}
+.chat-panel.open { display: flex; }
+.chat-panel-header {
+    padding: 12px 16px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: #fff; font-weight: 600; font-size: 15px;
+    display: flex; justify-content: space-between; align-items: center;
+}
+.chat-panel-header button { background: none; border: none; color: #fff; font-size: 18px; cursor: pointer; padding: 0 4px; }
+.chat-quick {
+    display: flex; flex-wrap: wrap; gap: 6px; padding: 10px 12px;
+    border-bottom: 1px solid #f0f0f0;
+}
+.chat-quick button {
+    padding: 5px 10px; font-size: 11px; border: 1px solid #e0e0e0;
+    border-radius: 14px; background: #f8f9fa; color: #555; cursor: pointer;
+    transition: all 0.15s; white-space: nowrap;
+}
+.chat-quick button:hover { background: var(--primary); color: #fff; border-color: var(--primary); }
+.chat-messages {
+    flex: 1; overflow-y: auto; padding: 12px;
+    display: flex; flex-direction: column; gap: 10px;
+}
+.chat-msg {
+    max-width: 85%; padding: 8px 12px; border-radius: 10px;
+    font-size: 13px; line-height: 1.5; word-break: break-word;
+}
+.chat-msg.user { align-self: flex-end; background: var(--primary); color: #fff; }
+.chat-msg.ai { align-self: flex-start; background: #f0f2f5; color: #333; }
+.chat-msg .typing { display: flex; gap: 4px; padding: 4px 0; }
+.chat-msg .typing span {
+    width: 6px; height: 6px; border-radius: 50%; background: #999;
+    animation: typingBounce 1.2s infinite;
+}
+.chat-msg .typing span:nth-child(2) { animation-delay: 0.2s; }
+.chat-msg .typing span:nth-child(3) { animation-delay: 0.4s; }
+@keyframes typingBounce {
+    0%, 60%, 100% { transform: translateY(0); }
+    30% { transform: translateY(-6px); }
+}
+.chat-input-area {
+    display: flex; gap: 8px; padding: 10px 12px; border-top: 1px solid #f0f0f0;
+}
+.chat-input-area input {
+    flex: 1; padding: 8px 12px; border: 1.5px solid #e0e0e0;
+    border-radius: 18px; font-size: 13px; outline: none;
+}
+.chat-input-area input:focus { border-color: var(--primary); }
+.chat-input-area button {
+    width: 36px; height: 36px; border-radius: 50%; border: none;
+    background: var(--primary); color: #fff; font-size: 16px;
+    cursor: pointer; display: flex; align-items: center; justify-content: center;
+}
+</style>
+</head>
+<body>
+
+<!-- Sidebar -->
+<aside class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+        <h1>智瞳课堂</h1>
+        <p>Smart Classroom</p>
+    </div>
+    <nav class="sidebar-nav">
+        <div class="nav-group">
+            <div class="nav-group-title">监控管理</div>
+            <div class="nav-item active" data-page="monitor">
+                <span class="nav-icon">▶</span> 实时监测
+            </div>
+            <div class="nav-item" data-page="face_attendance">
+                <span class="nav-icon">◉</span> 人脸考勤
+            </div>
+        </div>
+        <div class="nav-group">
+            <div class="nav-group-title">学生管理</div>
+            <div class="nav-item" data-page="user_manage">
+                <span class="nav-icon">⚙</span> 用户管理
+            </div>
+            <div class="nav-item" data-page="students">
+                <span class="nav-icon">⊞</span> 学生档案
+            </div>
+            <div class="nav-item" data-page="face_records">
+                <span class="nav-icon">≡</span> 考勤记录
+            </div>
+        </div>
+        <div class="nav-group">
+            <div class="nav-group-title">数据概览</div>
+            <div class="nav-item" data-page="dashboard">
+                <span class="nav-icon">◎</span> 数据总览
+            </div>
+        </div>
+        <div class="nav-group">
+            <div class="nav-group-title">设备管控</div>
+            <div class="nav-item" data-page="energy">
+                <span class="nav-icon">⚡</span> 节能控制
+            </div>
+        </div>
+    </nav>
+</aside>
+
+<!-- Main -->
+<div class="main">
+    <header class="header">
+        <div style="display:flex;align-items:center;gap:12px;">
+            <button class="menu-toggle" id="menuToggle">☰</button>
+            <span class="header-title">智瞳课堂 · <span id="headerTitle">实时监测</span></span>
+        </div>
+        <div style="display:flex;align-items:center;gap:16px;">
+            <span class="header-clock" id="headerClock"></span>
+            <div class="user-dropdown" id="userDropdown">
+                <button class="user-dropdown-btn" id="userDropdownBtn">
+                    <span id="headerUsername">admin</span> ▼
+                </button>
+                <div class="user-dropdown-menu" id="userDropdownMenu">
+                    <button onclick="showRegisterModal()">注册新用户</button>
+                    <button onclick="doLogout()">退出登录</button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <div class="content">
+
+        <!-- ==================== Page: monitor ==================== -->
+        <div class="page page--active" data-page="monitor">
+            <div class="stat-grid" id="monitorStats">
+                <div class="stat-card primary">
+                    <div class="stat-label">举手</div>
+                    <div class="stat-value" id="statHandraising">0</div>
+                </div>
+                <div class="stat-card info">
+                    <div class="stat-label">阅读</div>
+                    <div class="stat-value" id="statReading">0</div>
+                </div>
+                <div class="stat-card success">
+                    <div class="stat-label">写作</div>
+                    <div class="stat-value" id="statWriting">0</div>
+                </div>
+                <div class="stat-card warning">
+                    <div class="stat-label">使用手机</div>
+                    <div class="stat-value" id="statUsingphone">0</div>
+                </div>
+                <div class="stat-card accent">
+                    <div class="stat-label">低头</div>
+                    <div class="stat-value" id="statBowinghead">0</div>
+                </div>
+                <div class="stat-card danger">
+                    <div class="stat-label">靠在桌子上</div>
+                    <div class="stat-value" id="statLeaningtable">0</div>
+                </div>
+            </div>
+            <!-- CNN 行为分类卡片（开发板回退模式） -->
+            <div class="cnn-result-card" id="cnnResultCard" style="display:none;">
+                <div class="cnn-result-icon" id="cnnResultIcon">🎯</div>
+                <div class="cnn-result-action" id="cnnResultAction">--</div>
+                <div class="cnn-result-conf" id="cnnResultConf"></div>
+                <div class="cnn-result-note">NPU CNN 行为分类 · 开发板模式</div>
+            </div>
+
+            <div class="card">
+                <div class="camera-container" id="monitorCameraContainer">
+                    <video id="monitorVideo" autoplay playsinline muted></video>
+                    <img id="monitorServerStream" style="display:none; width:100%; height:100%; object-fit:contain;" />
+                    <canvas class="overlay-canvas" id="monitorOverlay"></canvas>
+                </div>
+                <div class="camera-controls">
+                    <select id="monitorCamSelect" style="width:200px; padding:6px 10px; border:1px solid #333; border-radius:6px; background:#1a1a2e; color:#ccc; font-size:13px;">
+                        <option value="">-- 选择摄像头 --</option>
+                    </select>
+                    <span id="monitorServerIdxWrap" style="display:none; align-items:center; gap:4px;">
+                        <span style="color:#888; font-size:12px;">索引:</span>
+                        <input type="number" id="monitorServerCamIndex" value="21" min="0" max="99" style="width:50px; padding:5px; border:1px solid #333; border-radius:6px; background:#1a1a2e; color:#ccc; font-size:13px; text-align:center;">
+                    </span>
+                    <button class="btn btn-sm" onclick="Monitor.refreshCameras()" title="刷新">&#x21bb;</button>
+                    <button class="btn btn-primary" id="btnCamToggle" onclick="Monitor.toggleCamera()">开启摄像头</button>
+                    <button class="btn btn-success" id="btnStartInfer" onclick="Monitor.startInference()" disabled>开始检测</button>
+                    <button class="btn btn-outline" id="btnStopInfer" onclick="Monitor.stopInference()" disabled>停止检测</button>
+                    <label>间隔:</label>
+                    <input type="number" id="inferInterval" value="2000" min="500" step="100" style="width:70px; padding:5px; border:1px solid #333; border-radius:6px; background:#1a1a2e; color:#ccc; font-size:13px; text-align:center;">ms
+                    <button class="btn btn-warning" onclick="Monitor.markAttendance()">标记考勤</button>
+                </div>
+                <div class="status-bar">
+                    <span class="status-dot" id="monitorStatusDot"></span>
+                    <span id="monitorStatusText">未连接</span>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-title">文件推理</div>
+                <div class="selector-row">
+                    <select class="form-select" id="yoloFileSelect">
+                        <option value="">-- 选择文件 --</option>
+                    </select>
+                    <button class="btn btn-primary" onclick="Monitor.runFileInference()">运行推理</button>
+                </div>
+            </div>
+            <div class="card">
+                <div class="card-title">视频上传推理</div>
+                <div class="form-group">
+                    <input type="file" id="yoloVideoInput" accept="video/*" style="margin-bottom:8px;">
+                    <button class="btn btn-primary" onclick="Monitor.uploadVideo()">上传并推理</button>
+                    <span id="yoloVideoProgress" style="margin-left:10px; color:#888; font-size:13px;"></span>
+                </div>
+                <div id="yoloVideoResult" style="display:none;">
+                    <div style="margin-bottom:10px;">
+                        <strong>统计结果:</strong>
+                        <span id="yoloVideoStats"></span>
+                    </div>
+                    <video id="yoloVideoPlayer" controls style="width:100%; max-height:400px; border-radius:8px;"></video>
+                </div>
+            </div>
+        </div>
+
+        
+<!-- 实时检测结果 -->
+<div class="card" style="margin-top: 20px;">
+    <div class="card-title">📊 实时检测结果</div>
+    <div id="detectionResults" style="min-height: 100px;">
+        <div style="color: #888; text-align: center; padding: 20px;">
+            等待检测数据...
+        </div>
+    </div>
+    <div style="margin-top: 10px; text-align: right;">
+        <span id="detectionTime" style="color: #666; font-size: 12px;"></span>
+    </div>
+</div>
+
+<script>
+// 定期获取最新检测结果
+async function fetchDetections() {
+    try {
+        const response = await fetch('/api/yolo/latest');
+        const data = await response.json();
+
+        if (data.ok && data.boxes && data.boxes.length > 0) {
+            let html = '<div style="display: flex; flex-wrap: wrap; gap: 8px;">';
+
+            // 统计各类别数量
+            const counts = {};
+            data.boxes.forEach(box => {
+                const cls = box.class || box.cls || 'unknown';
+                counts[cls] = (counts[cls] || 0) + 1;
+            });
+
+            // 显示统计
+            for (const [cls, count] of Object.entries(counts)) {
+                html += `<div style="background: #16213e; padding: 8px 12px; border-radius: 8px; border: 1px solid #333;">
+                    <span style="color: #4A90D9; font-weight: bold;">${cls}</span>
+                    <span style="color: #27ae60; margin-left: 8px;">${count}人</span>
+                </div>`;
+            }
+
+            html += '</div>';
+            document.getElementById('detectionResults').innerHTML = html;
+
+            // 更新时间
+            if (data.timestamp) {
+                const time = new Date(data.timestamp);
+                document.getElementById('detectionTime').textContent =
+                    '更新时间: ' + time.toLocaleTimeString();
+            }
+        } else {
+            document.getElementById('detectionResults').innerHTML =
+                '<div style="color: #888; text-align: center; padding: 20px;">暂无检测结果</div>';
+        }
+    } catch (error) {
+        console.error('获取检测结果失败:', error);
+    }
+}
+
+// 每2秒更新一次
+setInterval(fetchDetections, 2000);
+fetchDetections();
+</script>
+
+<!-- ==================== Page: face_attendance ==================== -->
+        <div class="page" data-page="face_attendance">
+            <div class="card">
+                <div class="tabs" id="faceTabs">
+                    <div class="tab active" data-tab="cam">摄像头拍照</div>
+                    <div class="tab" data-tab="upload">照片上传</div>
+                    <div class="tab" data-tab="video">视频考勤</div>
+                    <div class="tab" data-tab="manual">手动输入学号</div>
+                </div>
+
+                <!-- Tab: Camera -->
+                <div class="tab-content active" data-tab="cam">
+                    <div class="camera-container" id="faceCameraContainer">
+                        <video id="faceVideo" autoplay playsinline muted></video>
+                        <img id="faceServerStream" style="display:none; width:100%; height:100%; object-fit:contain;" />
+                        <canvas id="faceCanvas" style="display:none;"></canvas>
+                    </div>
+                    <div class="btn-group" style="margin-bottom:16px;">
+                        <div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap; margin-bottom:8px;">
+                            <select id="faceCamSelect" style="width:200px; padding:5px 8px; border:1px solid #333; border-radius:6px; background:#1a1a2e; color:#ccc; font-size:13px;">
+                                <option value="">-- 选择摄像头 --</option>
+                            </select>
+                            <span id="faceServerIdxWrap" style="display:none; align-items:center; gap:4px;">
+                                <span style="color:#888; font-size:12px;">索引:</span>
+                                <input type="number" id="faceServerCamIndex" value="21" min="0" max="99" style="width:50px; padding:5px; border:1px solid #333; border-radius:6px; background:#1a1a2e; color:#ccc; font-size:12px; text-align:center;">
+                            </span>
+                            <button class="btn btn-sm" onclick="Face.refreshCameras()" title="刷新">&#x21bb;</button>
+                        </div>
+                        <button class="btn btn-primary" id="btnFaceCamToggle" onclick="Face.toggleCamera()">开启摄像头</button>
+                        <button class="btn btn-outline" id="btnFaceCamFreeze" onclick="Face.freezeCamera()" disabled>冻结画面</button>
+                        <button class="btn btn-success" id="btnFaceCamSnap" onclick="Face.snapAndSubmit()" disabled>拍照并提交</button>
+                    </div>
+                </div>
+
+                <!-- Tab: Upload -->
+                <div class="tab-content" data-tab="upload">
+                    <div class="form-group">
+                        <label class="form-label">选择照片</label>
+                        <input type="file" id="faceFileInput" accept="image/*" class="form-input">
+                    </div>
+                    <button class="btn btn-primary" onclick="Face.uploadAndSubmit()">上传并识别</button>
+                </div>
+
+                <!-- Tab: Video -->
+                <div class="tab-content" data-tab="video">
+                    <div class="form-group">
+                        <label class="form-label">选择视频文件</label>
+                        <input type="file" id="faceVideoInput" accept="video/*" class="form-input">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">采样间隔（秒）</label>
+                        <input type="number" id="faceVideoInterval" value="2" min="1" max="60" class="form-input" style="width:100px;">
+                    </div>
+                    <button class="btn btn-primary" onclick="Face.uploadVideo()">上传并考勤</button>
+                    <span id="faceVideoProgress" style="margin-left:10px; color:#888; font-size:13px;"></span>
+                    <div id="faceVideoResult" style="display:none; margin-top:12px;">
+                        <div class="table-wrap">
+                            <table>
+                                <thead><tr><th>姓名</th><th>学号</th><th>班级</th><th>匹配度</th></tr></thead>
+                                <tbody id="faceVideoResultBody"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tab: Manual -->
+                <div class="tab-content" data-tab="manual">
+                    <div class="form-group">
+                        <label class="form-label">学号</label>
+                        <input type="text" id="faceManualId" class="form-input" placeholder="请输入学号">
+                    </div>
+                    <button class="btn btn-primary" onclick="Face.manualSubmit()">提交考勤</button>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-title">考勤汇总（今日）</div>
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr><th>姓名</th><th>学号</th><th>班级</th><th>考勤状态</th><th>打卡时间</th></tr>
+                        </thead>
+                        <tbody id="faceSummaryBody"></tbody>
+                    </table>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- ==================== Page: students ==================== -->
+        <div class="page" data-page="students">
+            <div class="stat-grid">
+                <div class="stat-card primary">
+                    <div class="stat-label">学生人数</div>
+                    <div class="stat-value" id="studentCount">0</div>
+                </div>
+                <div class="stat-card success">
+                    <div class="stat-label">照片总数</div>
+                    <div class="stat-value" id="photoCount">0</div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-title">添加学生</div>
+                <form id="addStudentForm" onsubmit="Students.add(event)">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label">姓名</label>
+                            <input type="text" class="form-input" id="stuName" required>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">学号</label>
+                            <input type="text" class="form-input" id="stuId" required>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">班级</label>
+                            <input type="text" class="form-input" id="stuClass" required>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">照片（拖拽或点击上传）</label>
+                        <div class="dropzone" id="photoDropzone">
+                            <input type="file" id="photoFiles" accept="image/*" multiple>
+                            <p>点击或拖拽照片到此处</p>
+                        </div>
+                        <div class="photo-list" id="photoPreview"></div>
+                    </div>
+                    <button type="submit" class="btn btn-primary">添加学生</button>
+                </form>
+            </div>
+
+            <div class="card">
+                <div class="card-title">学生列表</div>
+                <div class="student-grid" id="studentGrid"></div>
+                <div class="empty-state" id="studentsEmpty" style="display:none;">
+                    <div class="empty-icon">⊞</div>
+                    <p>暂无学生数据</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- ==================== Page: face_records ==================== -->
+        <div class="page" data-page="face_records">
+            <div class="card">
+                <div class="card-title">考勤记录</div>
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr><th>姓名</th><th>学号</th><th>班级</th><th>考勤次数</th><th>出勤率</th><th>最后打卡</th></tr>
+                        </thead>
+                        <tbody id="allFaceRecordsBody"></tbody>
+                    </table>
+                </div>
+                <div class="empty-state" id="faceRecordsEmpty" style="display:none;">
+                    <div class="empty-icon">≡</div>
+                    <p>暂无考勤记录</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- ==================== Page: dashboard ==================== -->
+        <div class="page" data-page="dashboard">
+            <div class="stat-grid" id="dashboardStats">
+                <div class="stat-card primary">
+                    <div class="stat-label">学生人数</div>
+                    <div class="stat-value" id="dashStudents">0</div>
+                </div>
+                <div class="stat-card success">
+                    <div class="stat-label">考勤记录数</div>
+                    <div class="stat-value" id="dashAttendance">0</div>
+                </div>
+                <div class="stat-card warning">
+                    <div class="stat-label">YOLO检测数</div>
+                    <div class="stat-value" id="dashYolo">0</div>
+                    <div class="stat-sub" style="font-size:11px;color:#888;">截图检测总框数</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ==================== Page: energy ==================== -->
+        <div class="page" data-page="energy">
+            <!-- 状态卡片 -->
+            <div class="stat-grid" id="energyStats">
+                <div class="stat-card primary">
+                    <div class="stat-label">教室人数 (People)</div>
+                    <div class="stat-value" id="energyPersonCount">--</div>
+                </div>
+                <div class="stat-card success" id="energyLightCard">
+                    <div class="stat-label">灯光 (Light)</div>
+                    <div class="stat-value" id="energyLight">--</div>
+                </div>
+                <div class="stat-card warning" id="energyFanCard">
+                    <div class="stat-label">风扇 (Fan)</div>
+                    <div class="stat-value" id="energyFan">--</div>
+                </div>
+                <div class="stat-card" id="energyAcCard" style="border-top:3px solid #3498db;">
+                    <div class="stat-label">空调 (AC)</div>
+                    <div class="stat-value" id="energyAc" style="color:#3498db;">--</div>
+                </div>
+            </div>
+
+            <!-- 手动控制 -->
+            <div class="card">
+                <div class="card-title">手动控制</div>
+                <div class="btn-group">
+                    <button class="btn btn-success" onclick="Energy.override('light', true)">🕯 开灯</button>
+                    <button class="btn btn-outline" onclick="Energy.override('light', false)">关灯</button>
+                    <button class="btn btn-success" onclick="Energy.override('fan', true)">🌀 开风扇</button>
+                    <button class="btn btn-outline" onclick="Energy.override('fan', false)">关风扇</button>
+                    <button class="btn btn-success" onclick="Energy.override('ac', true)">❄ 开空调</button>
+                    <button class="btn btn-outline" onclick="Energy.override('ac', false)">关空调</button>
+                </div>
+            </div>
+
+            <!-- 模式切换 -->
+            <div class="card">
+                <div class="card-title">运行模式</div>
+                <div style="display:flex;align-items:center;gap:12px;">
+                    <span id="energyModeLabel">当前: --</span>
+                    <button class="btn btn-warning" onclick="Energy.toggleMode()">切换模拟/真实模式</button>
+                </div>
+                <div style="margin-top:8px;font-size:12px;color:#999;">
+                    模拟模式：仅打印日志不操作GPIO | 真实模式：控制实际继电器
+                </div>
+            </div>
+
+            <!-- 检测状态 -->
+            <div class="card">
+                <div class="card-title">系统状态</div>
+                <div style="display:flex;gap:24px;flex-wrap:wrap;">
+                    <div><span style="color:#999;">检测FPS:</span> <span id="energyFps">--</span></div>
+                    <div><span style="color:#999;">YOLO模型:</span> <span id="energyModel">--</span></div>
+                    <div><span style="color:#999;">更新间隔:</span> 2秒</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ==================== Page: user_manage ==================== -->
+        <div class="page" data-page="user_manage">
+            <div class="card">
+                <div class="card-title">用户管理</div>
+                <div class="admin-only" style="text-align:center;padding:40px;color:#999;display:none;" id="umNoPerm">
+                    &#x26D4; 此页面仅管理员可访问
+                </div>
+                <div id="umContent" style="display:none;">
+                    <p style="font-size:13px;color:#888;margin-bottom:16px;">
+                        管理员可在此查看、重置密码或删除用户。主控密钥：<code style="background:#f5f5f5;padding:2px 6px;border-radius:3px;">reset2024</code>
+                    </p>
+                    <div class="table-wrap">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>用户名</th>
+                                    <th>角色</th>
+                                    <th>创建时间</th>
+                                    <th style="text-align:center;">操作</th>
+                                </tr>
+                            </thead>
+                            <tbody id="umUserTable"><tr><td colspan="4" style="text-align:center;color:#bbb;padding:24px;">加载中...</td></tr></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<!-- Toast container -->
+<!-- Photo Lightbox -->
+<div class="photo-lightbox" id="photoLightbox">
+    <button class="photo-lightbox-close" onclick="closePhotoLightbox()">&times;</button>
+    <button class="photo-lightbox-nav photo-lightbox-prev" onclick="navPhotoLightbox(-1)">&#8249;</button>
+    <img class="photo-lightbox-img" id="photoLightboxImg" src="">
+    <button class="photo-lightbox-nav photo-lightbox-next" onclick="navPhotoLightbox(1)">&#8250;</button>
+    <div class="photo-lightbox-counter" id="photoLightboxCounter"></div>
+</div>
+
+<div class="toast-container" id="toastContainer"></div>
+
+<!-- Confirm Modal -->
+<div class="modal-overlay" id="confirmModal">
+    <div class="modal-dialog">
+        <h3 id="confirmTitle">提示</h3>
+        <p id="confirmMsg"></p>
+        <div class="modal-btns">
+            <button class="modal-btn-cancel" id="confirmCancel">取消</button>
+            <button class="modal-btn-confirm" id="confirmOk">确定</button>
+        </div>
+    </div>
+</div>
+
+<!-- 注册新用户弹窗 -->
+<div class="modal-overlay" id="registerModal">
+    <div class="modal-dialog" style="width:380px;">
+        <h3 style="margin-bottom:16px;">注册新用户</h3>
+        <form id="registerForm" autocomplete="off">
+            <div class="form-group" style="margin-bottom:14px;text-align:left;">
+                <label style="display:block;font-size:13px;color:#555;margin-bottom:5px;">用户名</label>
+                <input type="text" id="regUsername" placeholder="至少2个字符" style="width:100%;padding:10px 12px;border:1.5px solid #e0e0e0;border-radius:6px;font-size:14px;outline:none;" required>
+            </div>
+            <div class="form-group" style="margin-bottom:14px;text-align:left;">
+                <label style="display:block;font-size:13px;color:#555;margin-bottom:5px;">密码</label>
+                <input type="password" id="regPassword" placeholder="至少4位" style="width:100%;padding:10px 12px;border:1.5px solid #e0e0e0;border-radius:6px;font-size:14px;outline:none;" required>
+            </div>
+            <div class="form-group" style="margin-bottom:16px;text-align:left;">
+                <label style="display:block;font-size:13px;color:#555;margin-bottom:5px;">确认密码</label>
+                <input type="password" id="regPassword2" placeholder="请再次输入密码" style="width:100%;padding:10px 12px;border:1.5px solid #e0e0e0;border-radius:6px;font-size:14px;outline:none;" required>
+            </div>
+            <div class="msg" id="regMsg" style="text-align:center;font-size:13px;min-height:18px;margin-bottom:10px;"></div>
+            <div class="modal-btns">
+                <button type="button" class="modal-btn-cancel" onclick="closeModal('registerModal')">取消</button>
+                <button type="submit" class="modal-btn-confirm">注册</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- ==================== AI 聊天悬浮组件 ==================== -->
+<button class="chat-fab" id="chatFab" title="AI 助手">💬</button>
+<div class="chat-panel" id="chatPanel">
+    <div class="chat-panel-header">
+        <span>AI 智能助手</span>
+        <button id="chatClose">✕</button>
+    </div>
+    <div class="chat-quick" id="chatQuick">
+        <button data-q="系统有哪些功能？">系统有哪些功能？</button>
+        <button data-q="今天出勤情况如何？">今天出勤情况如何？</button>
+        <button data-q="行为检测能识别哪些行为？">能识别哪些行为？</button>
+        <button data-q="介绍一下这个系统">介绍一下系统</button>
+    </div>
+    <div class="chat-messages" id="chatMessages">
+        <div class="chat-msg ai">你好！我是系统AI助手，可以帮你了解系统功能、查询数据。试试下方快捷问题，或直接输入你的问题 👋</div>
+    </div>
+    <div class="chat-input-area">
+        <input type="text" id="chatInput" placeholder="输入问题...">
+        <button id="chatSend">▶</button>
+    </div>
+</div>
+
+<script>
+(function() {
+    'use strict';
+
+    // ── 全局函数（提前定义，避免 onclick 找不到） ──
+    async function doLogout() {
+        var menu = document.getElementById('userDropdownMenu');
+        if (menu) menu.classList.remove('show');
+        var ok = confirm('确定要退出当前账户吗？');
+        if (ok) {
+            await fetch('/api/logout', { method: 'POST' });
+            window.location.href = '/login';
+        }
+    }
+
+    function showRegisterModal() {
+        var menu = document.getElementById('userDropdownMenu');
+        if (menu) menu.classList.remove('show');
+        var form = document.getElementById('registerForm');
+        if (form) form.reset();
+        var msg = document.getElementById('regMsg');
+        if (msg) { msg.textContent = ''; msg.className = 'msg'; }
+        openModal('registerModal');
+    }
+
+    function closeModal(id) {
+        document.getElementById(id).classList.remove('active');
+    }
+    function openModal(id) {
+        document.getElementById(id).classList.add('active');
+    }
+
+    /* ================================================================
+       Utility
+    ================================================================ */
+    function $(sel, ctx) { return (ctx || document).querySelector(sel); }
+    function $$(sel, ctx) { return (ctx || document).querySelectorAll(sel); }
+
+    function toast(msg, type) {
+        type = type || '';
+        var c = $('#toastContainer');
+        var el = document.createElement('div');
+        el.className = 'toast ' + type;
+        el.textContent = msg;
+        c.appendChild(el);
+        setTimeout(function() {
+            el.style.animation = 'slideOut 0.3s ease forwards';
+            setTimeout(function() { el.remove(); }, 300);
+        }, 3000);
+    }
+
+    /* ================================================================
+       Photo Lightbox
+    ================================================================ */
+    var _lightboxPhotos = [];
+    var _lightboxIndex = 0;
+
+    function openPhotoLightbox(src, allPhotos, index) {
+        _lightboxPhotos = allPhotos || [src];
+        _lightboxIndex = index || 0;
+        $('#photoLightboxImg').src = src;
+        $('#photoLightbox').classList.add('active');
+        _updateLightboxCounter();
+    }
+
+    function closePhotoLightbox() {
+        $('#photoLightbox').classList.remove('active');
+    }
+
+    function navPhotoLightbox(dir) {
+        if (_lightboxPhotos.length <= 1) return;
+        _lightboxIndex = (_lightboxIndex + dir + _lightboxPhotos.length) % _lightboxPhotos.length;
+        $('#photoLightboxImg').src = _lightboxPhotos[_lightboxIndex];
+        _updateLightboxCounter();
+    }
+
+    function _updateLightboxCounter() {
+        var counter = $('#photoLightboxCounter');
+        if (_lightboxPhotos.length > 1) {
+            counter.textContent = (_lightboxIndex + 1) + ' / ' + _lightboxPhotos.length;
+        } else {
+            counter.textContent = '';
+        }
+    }
+
+    // Close lightbox on background click or Escape
+    document.addEventListener('click', function(e) {
+        if (e.target.id === 'photoLightbox' || e.target.id === 'photoLightboxImg') {
+            if (e.target.id === 'photoLightbox') closePhotoLightbox();
+        }
+    });
+    document.addEventListener('keydown', function(e) {
+        if (!$('#photoLightbox').classList.contains('active')) return;
+        if (e.key === 'Escape') closePhotoLightbox();
+        if (e.key === 'ArrowLeft') navPhotoLightbox(-1);
+        if (e.key === 'ArrowRight') navPhotoLightbox(1);
+    });
+
+    async function api(url, opts) {
+        opts = opts || {};
+        if (opts.body && typeof opts.body === 'string') {
+            opts.headers = opts.headers || {};
+            opts.headers['Content-Type'] = 'application/json';
+        }
+        try {
+            var res = await fetch(url, opts);
+            var data = await res.json();
+            return data;
+        } catch (e) {
+            console.warn('API error:', url, e);
+            return null;
+        }
+    }
+
+    function confirmDialog(title, msg) {
+        return new Promise(function(resolve) {
+            $('#confirmTitle').textContent = title;
+            $('#confirmMsg').textContent = msg;
+            var modal = $('#confirmModal');
+            modal.classList.add('active');
+            function cleanup(ok) {
+                modal.classList.remove('active');
+                $('#confirmOk').removeEventListener('click', onOk);
+                $('#confirmCancel').removeEventListener('click', onCancel);
+                resolve(ok);
+            }
+            function onOk() { cleanup(true); }
+            function onCancel() { cleanup(false); }
+            $('#confirmOk').addEventListener('click', onOk);
+            $('#confirmCancel').addEventListener('click', onCancel);
+        });
+    }
+
+    /* ================================================================
+       Navigation & Page Switch
+    ================================================================ */
+    var pageTitles = {
+        monitor: '实时监测',
+        face_attendance: '人脸考勤',
+        students: '学生档案',
+        user_manage: '用户管理',
+        face_records: '考勤记录',
+        dashboard: '数据总览',
+        energy: '节能控制'
+    };
+
+    var currentPage = 'monitor';
+
+    function _cameraActive() {
+        var monActive = typeof Monitor !== 'undefined' && (Monitor.stream !== null || Monitor.serverMode === true);
+        var faceActive = typeof Face !== 'undefined' && (Face.stream !== null || Face.serverMode === true);
+        return { monitor: monActive, face: faceActive, any: monActive || faceActive };
+    }
+
+    async function switchPage(pageName) {
+        // 同页面不切换
+        if (pageName === currentPage) return;
+
+        // 检测是否有摄像头正在运行
+        var cam = _cameraActive();
+        if (cam.any) {
+            var sources = [];
+            if (cam.monitor) sources.push('"实时监测"');
+            if (cam.face) sources.push('"人脸考勤"');
+            var source = sources.join('和');
+
+            var targetName = pageTitles[pageName] || pageName;
+            var ok = await confirmDialog(
+                '摄像头正在运行',
+                '当前' + source + '页面的摄像头仍在运行中。\n切换到"' + targetName + '"将自动关闭摄像头，是否继续？'
+            );
+            if (!ok) return; // 用户取消，不切换
+        }
+
+        // Close cameras on page switch
+        Monitor.stopCamera();
+        Face.closeCamera();
+
+        // Stop energy polling if leaving energy page
+        if (currentPage === 'energy') {
+            Energy.stop();
+        }
+
+        currentPage = pageName;
+
+        // Update sidebar
+        $$('.nav-item').forEach(function(item) {
+            item.classList.toggle('active', item.dataset.page === pageName);
+        });
+
+        // Update pages
+        $$('.page').forEach(function(p) {
+            p.classList.toggle('page--active', p.dataset.page === pageName);
+        });
+
+        // Update header
+        $('#headerTitle').textContent = pageTitles[pageName] || pageName;
+
+        // Close sidebar on mobile
+        $('#sidebar').classList.remove('open');
+
+        // Load data for the page
+        if (pageName === 'monitor') { Monitor.loadFiles(); Monitor.refreshCameras(); }
+        if (pageName === 'face_attendance') { Face.loadSummary(); Face.refreshCameras(); }
+        if (pageName === 'students') Students.load();
+        if (pageName === 'face_records') FaceRecords.load();
+        if (pageName === 'dashboard') Dashboard.load();
+        if (pageName === 'energy') Energy.start();
+        if (pageName === 'user_manage') UserManage.load();
+    }
+
+    // Sidebar click handlers
+    $$('.nav-item').forEach(function(item) {
+        item.addEventListener('click', function() {
+            switchPage(this.dataset.page);
+        });
+    });
+
+    // Mobile menu toggle
+    $('#menuToggle').addEventListener('click', function() {
+        $('#sidebar').classList.toggle('open');
+    });
+
+    // Close sidebar on outside click (mobile)
+    document.addEventListener('click', function(e) {
+        if (window.innerWidth <= 768 && !e.target.closest('.sidebar') && !e.target.closest('#menuToggle')) {
+            $('#sidebar').classList.remove('open');
+        }
+    });
+
+    // ── 用户下拉菜单 + 注册 + 退出 ──
+    (function() {
+        // 加载当前用户信息
+        api('/api/user-info').then(function(data) {
+            if (data && data.username) {
+                $('#headerUsername').textContent = data.username;
+            }
+        }).catch(function() {});
+
+        // 点击按钮切换下拉菜单
+        $('#userDropdownBtn').addEventListener('click', function(e) {
+            e.stopPropagation();
+            $('#userDropdownMenu').classList.toggle('show');
+        });
+
+        // 点击页面其他地方关闭菜单
+        document.addEventListener('click', function() {
+            $('#userDropdownMenu').classList.remove('show');
+        });
+    })();
+
+    // 注册表单提交
+    document.getElementById('registerForm').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        var u = document.getElementById('regUsername').value.trim();
+        var p = document.getElementById('regPassword').value;
+        var p2 = document.getElementById('regPassword2').value;
+        var m = document.getElementById('regMsg');
+        if (!u || u.length < 2) { m.textContent = '用户名至少2个字符'; m.className = 'msg error'; return; }
+        if (p.length < 4) { m.textContent = '密码至少4位'; m.className = 'msg error'; return; }
+        if (p !== p2) { m.textContent = '两次密码不一致'; m.className = 'msg error'; return; }
+        var res = await api('/api/register', { method: 'POST', body: JSON.stringify({username: u, password: p}) });
+        if (res.ok) {
+            m.textContent = '用户「' + u + '」注册成功！'; m.className = 'msg success';
+            setTimeout(function() { closeModal('registerModal'); }, 1500);
+        } else {
+            m.textContent = res.error || '注册失败'; m.className = 'msg error';
+        }
+    });
+
+    /* ================================================================
+       Clock
+    ================================================================ */
+    function updateClock() {
+        var now = new Date();
+        var pad = function(n) { return n < 10 ? '0' + n : n; };
+        var str = now.getFullYear() + '-' + pad(now.getMonth() + 1) + '-' + pad(now.getDate()) +
+                  ' ' + pad(now.getHours()) + ':' + pad(now.getMinutes()) + ':' + pad(now.getSeconds());
+        $('#headerClock').textContent = str;
+    }
+    setInterval(updateClock, 1000);
+    updateClock();
+
+    /* ================================================================
+       Monitor (YOLO Detection)
+    ================================================================ */
+    var Monitor = {
+        stream: null,
+        serverMode: false,
+        inferTimer: null,
+        running: false,
+
+        refreshCameras: async function() {
+            var sel = $('#monitorCamSelect');
+            sel.innerHTML = '<option value="">-- 正在搜索摄像头 --</option>';
+
+            // 先请求权限，否则 enumerateDevices 拿不到设备名
+            var tempStream = null;
+            try {
+                tempStream = await navigator.mediaDevices.getUserMedia({ video: true });
+            } catch (e) {
+                console.warn('摄像头权限请求失败:', e.name);
+            }
+
+            try {
+                var devices = await navigator.mediaDevices.enumerateDevices();
+                var cameras = devices.filter(function(d) { return d.kind === 'videoinput'; });
+
+                sel.innerHTML = '<option value="">-- 选择摄像头 --</option>';
+
+                // 服务器摄像头放第一个，默认选中
+                var srvOpt = document.createElement('option');
+                srvOpt.value = 'server';
+                srvOpt.textContent = '📹 服务器摄像头（板子）';
+                sel.appendChild(srvOpt);
+
+                cameras.forEach(function(d) {
+                    var opt = document.createElement('option');
+                    opt.value = d.deviceId;
+                    opt.textContent = d.label || '本地摄像头';
+                    sel.appendChild(opt);
+                });
+
+                // 默认选中服务器摄像头
+                sel.value = 'server';
+                $('#monitorServerIdxWrap').style.display = 'inline-flex';
+
+                sel.onchange = function() {
+                    $('#monitorServerIdxWrap').style.display = sel.value === 'server' ? 'inline-flex' : 'none';
+                };
+            } catch (e) {
+                console.warn('枚举摄像头失败:', e);
+                // 即使失败也添加服务器选项
+                sel.innerHTML = '<option value="server">📹 服务器摄像头（板子）</option>';
+                $('#monitorServerIdxWrap').style.display = 'inline-flex';
+            }
+
+            // 释放临时流
+            if (tempStream) tempStream.getTracks().forEach(function(t) { t.stop(); });
+        },
+
+        toggleCamera: function() {
+            if (this.stream || this.serverMode) {
+                this.stopCamera();
+            } else {
+                this.startCamera();
+            }
+        },
+
+        startCamera: async function() {
+            var sel = $('#monitorCamSelect');
+            if (!sel.value) { toast('请先选择摄像头', 'warning'); return; }
+
+            if (sel.value === 'server') {
+                // ═══ 服务器模式 ═══
+                this.serverMode = true;
+                var camIdx = $('#monitorServerCamIndex').value || 0;
+                $('#monitorVideo').style.display = 'none';
+                $('#monitorServerStream').style.display = 'block';
+                $('#monitorServerStream').src = '/video_feed?camera=' + camIdx;
+            } else {
+                // ═══ 本地模式 ═══
+                try {
+                    this.stream = await navigator.mediaDevices.getUserMedia({
+                        video: { width: { ideal: 1280 }, height: { ideal: 720 }, deviceId: { exact: sel.value } }
+                    });
+                    this.serverMode = false;
+                    var video = $('#monitorVideo');
+                    video.srcObject = this.stream;
+                    video.style.display = 'block';
+                    $('#monitorServerStream').style.display = 'none';
+                    await video.play();
+                } catch (e) {
+                    console.error('摄像头错误:', e.name, e.message);
+                    var msg = '摄像头开启失败';
+                    if (e.name === 'NotAllowedError') msg = '浏览器拒绝了摄像头权限，请在地址栏右侧允许后重试';
+                    else if (e.name === 'NotFoundError') msg = '未找到摄像头设备';
+                    else if (e.name === 'NotReadableError') msg = '摄像头被其他程序占用';
+                    toast(msg, 'error');
+                    return;
+                }
+            }
+
+            sel.disabled = true;
+            $('#btnCamToggle').textContent = '关闭摄像头';
+            $('#btnStartInfer').disabled = false;
+            $('#monitorStatusDot').className = 'status-dot online';
+            $('#monitorStatusText').textContent = '摄像头已开启';
+            toast('摄像头已开启', 'success');
+        },
+
+        stopCamera: function() {
+            if (this.stream) {
+                this.stream.getTracks().forEach(function(t) { t.stop(); });
+                this.stream = null;
+            }
+            if (this.serverMode) {
+                var camIdx = $('#monitorServerCamIndex').value || 0;
+                fetch('/video_stop?camera=' + camIdx);
+                $('#monitorServerStream').src = '';
+                $('#monitorServerStream').style.display = 'none';
+                this.serverMode = false;
+            }
+            $('#monitorVideo').srcObject = null;
+            $('#monitorVideo').style.display = 'block';
+            this.stopInference();
+            var sel = $('#monitorCamSelect');
+            sel.disabled = false;
+            $('#btnCamToggle').textContent = '开启摄像头';
+            $('#btnStartInfer').disabled = true;
+            $('#monitorStatusDot').className = 'status-dot offline';
+            $('#monitorStatusText').textContent = '未连接';
+            var canvas = $('#monitorOverlay');
+            canvas.getContext('2d').clearRect(0, 0, canvas.width, canvas.height);
+        },
+
+        startInference: function() {
+            if (this.running) return;
+            if (!this.stream && !this.serverMode) {
+                toast('请先开启摄像头', 'warning');
+                return;
+            }
+            this.running = true;
+            $('#btnStartInfer').disabled = true;
+            $('#btnStopInfer').disabled = false;
+            $('#monitorStatusText').textContent = '检测中...';
+            this._loop();
+        },
+
+        stopInference: function() {
+            this.running = false;
+            if (this.inferTimer) {
+                clearTimeout(this.inferTimer);
+                this.inferTimer = null;
+            }
+            $('#btnStartInfer').disabled = !(this.stream || this.serverMode);
+            $('#btnStopInfer').disabled = true;
+            if (this.stream || this.serverMode) {
+                $('#monitorStatusText').textContent = '摄像头已开启';
+            }
+        },
+
+        _loop: async function() {
+            if (!this.running) return;
+
+            var overlay = $('#monitorOverlay');
+            var tempCanvas = document.createElement('canvas');
+            var dataUrl;
+
+            if (this.serverMode) {
+                // Server mode: capture from server snapshot
+                try {
+                    var response = await fetch('/video_snapshot');
+                    var blob = await response.blob();
+                    dataUrl = await new Promise(function(resolve) {
+                        var reader = new FileReader();
+                        reader.onloadend = function() { resolve(reader.result); };
+                        reader.readAsDataURL(blob);
+                    });
+                    // Create image to get dimensions
+                    var img = new Image();
+                    await new Promise(function(resolve) {
+                        img.onload = resolve;
+                        img.src = dataUrl;
+                    });
+                    tempCanvas.width = img.width;
+                    tempCanvas.height = img.height;
+                    overlay.width = img.width;
+                    overlay.height = img.height;
+                    var tctx = tempCanvas.getContext('2d');
+                    tctx.drawImage(img, 0, 0);
+                } catch (e) {
+                    console.warn('Server snapshot error:', e);
+                    var interval = parseInt($('#inferInterval').value) || 2000;
+                    this.inferTimer = setTimeout(function() { Monitor._loop(); }, interval);
+                    return;
+                }
+            } else {
+                // Local mode: capture from video element
+                var video = $('#monitorVideo');
+                var vw = video.videoWidth || 640;
+                var vh = video.videoHeight || 480;
+                tempCanvas.width = vw;
+                tempCanvas.height = vh;
+                overlay.width = vw;
+                overlay.height = vh;
+                var tctx = tempCanvas.getContext('2d');
+                tctx.drawImage(video, 0, 0, vw, vh);
+                dataUrl = tempCanvas.toDataURL('image/jpeg', 0.8);
+            }
+
+            try {
+                var res = await api('/api/yolo/predict-frame', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ image: dataUrl })
+                });
+
+                // ── CNN 回退模式：显示醒目的行为分类卡片 ──
+                if (res && res.mode === 'rknn_cnn' && res.cnn_result) {
+                    var cr = res.cnn_result;
+                    $('#monitorStats').style.display = 'none';
+                    var card = $('#cnnResultCard');
+                    card.style.display = 'flex';
+                    $('#cnnResultAction').textContent = cr.action;
+                    $('#cnnResultConf').textContent = '置信度: ' + cr.confidence;
+                    var octx = overlay.getContext('2d');
+                    octx.clearRect(0, 0, overlay.width, overlay.height);
+                } else if (res && res.stats) {
+                    $('#monitorStats').style.display = '';
+                    $('#cnnResultCard').style.display = 'none';
+                    var dc = res.stats.display_counts || {};
+                    $('#statHandraising').textContent = dc['hand-raising'] || 0;
+                    $('#statReading').textContent = dc['reading'] || 0;
+                    $('#statWriting').textContent = dc['writing'] || 0;
+                    $('#statUsingphone').textContent = dc['using phone'] || 0;
+                    $('#statBowinghead').textContent = dc['bowing the head'] || 0;
+                    $('#statLeaningtable').textContent = dc['leaning over the table'] || 0;
+                }
+
+                if (res && res.boxes && res.boxes.length > 0) {
+                    this.drawBoxes(overlay, res.boxes);
+                } else {
+                    var octx = overlay.getContext('2d');
+                    octx.clearRect(0, 0, overlay.width, overlay.height);
+                }
+            } catch (e) {
+                console.warn('Inference error:', e);
+            }
+
+            var interval = parseInt($('#inferInterval').value) || 2000;
+            this.inferTimer = setTimeout(function() { Monitor._loop(); }, interval);
+        },
+
+        drawBoxes: function(canvas, boxes) {
+            var ctx = canvas.getContext('2d');
+            var w = canvas.width;
+            var h = canvas.height;
+            ctx.clearRect(0, 0, w, h);
+
+            var colors = {
+                'hand-raising': '#1abc9c',
+                'reading': '#3498db',
+                'writing': '#27ae60',
+                'using phone': '#f39c12',
+                'bowing the head': '#9b59b6',
+                'leaning over the table': '#e74c3c'
+            };
+
+            boxes.forEach(function(box) {
+                var className = box.class_name || '';
+                var color = colors[className] || '#4A90D9';
+                var xy = box.xyxy || [0, 0, 0, 0];
+                var x1 = xy[0] * w;
+                var y1 = xy[1] * h;
+                var x2 = xy[2] * w;
+                var y2 = xy[3] * h;
+
+                // Rounded rect
+                var r = 4;
+                ctx.beginPath();
+                ctx.moveTo(x1 + r, y1);
+                ctx.lineTo(x2 - r, y1);
+                ctx.quadraticCurveTo(x2, y1, x2, y1 + r);
+                ctx.lineTo(x2, y2 - r);
+                ctx.quadraticCurveTo(x2, y2, x2 - r, y2);
+                ctx.lineTo(x1 + r, y2);
+                ctx.quadraticCurveTo(x1, y2, x1, y2 - r);
+                ctx.lineTo(x1, y1 + r);
+                ctx.quadraticCurveTo(x1, y1, x1 + r, y1);
+                ctx.closePath();
+                ctx.strokeStyle = color;
+                ctx.lineWidth = 2;
+                ctx.stroke();
+
+                // Label
+                var conf = (box.conf || 0) * 100;
+                var label = className + ' ' + conf.toFixed(0) + '%';
+                ctx.font = 'bold 12px sans-serif';
+                var tw = ctx.measureText(label).width + 8;
+                ctx.fillStyle = color;
+                ctx.fillRect(x1, y1 - 20, tw, 20);
+                ctx.fillStyle = '#fff';
+                ctx.fillText(label, x1 + 4, y1 - 6);
+            });
+        },
+
+        loadFiles: async function() {
+            var data = await api('/api/yolo/list');
+            var sel = $('#yoloFileSelect');
+            sel.innerHTML = '<option value="">-- 选择文件 --</option>';
+            if (data) {
+                var allFiles = (data.images || []).concat(data.videos || []);
+                allFiles.forEach(function(f) {
+                    var opt = document.createElement('option');
+                    opt.value = f;
+                    opt.textContent = f;
+                    sel.appendChild(opt);
+                });
+            }
+        },
+
+        runFileInference: async function() {
+            var file = $('#yoloFileSelect').value;
+            if (!file) {
+                toast('请先选择文件', 'warning');
+                return;
+            }
+            toast('正在推理...', '');
+            var data = await api('/api/yolo/predict', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ file: file })
+            });
+            if (data && data.stats) {
+                var dc = data.stats.display_counts || {};
+                $('#statHandraising').textContent = dc['hand-raising'] || 0;
+                $('#statReading').textContent = dc['reading'] || 0;
+                $('#statWriting').textContent = dc['writing'] || 0;
+                $('#statUsingphone').textContent = dc['using phone'] || 0;
+                $('#statBowinghead').textContent = dc['bowing the head'] || 0;
+                $('#statLeaningtable').textContent = dc['leaning over the table'] || 0;
+                toast('推理完成', 'success');
+            }
+        },
+
+        markAttendance: async function() {
+            var data = await api('/api/yolo/attendance/mark', { method: 'POST' });
+            if (data) {
+                toast(data.message || '已标记考勤', 'success');
+            }
+        },
+
+        uploadVideo: async function() {
+            var input = $('#yoloVideoInput');
+            if (!input.files.length) {
+                toast('请先选择视频文件', 'warning');
+                return;
+            }
+            $('#yoloVideoProgress').textContent = '上传中...';
+            var fd = new FormData();
+            fd.append('video', input.files[0]);
+            try {
+                var res = await fetch('/api/yolo/upload-video', { method: 'POST', body: fd });
+                var data = await res.json();
+                if (data && data.ok) {
+                    // 显示统计
+                    var dc = data.stats.display_counts || {};
+                    var statsText = '举手:' + (dc['hand-raising']||0) + ' 阅读:' + (dc['reading']||0) + ' 写作:' + (dc['writing']||0) + ' 手机:' + (dc['using phone']||0) + ' 低头:' + (dc['bowing the head']||0) + ' 靠桌:' + (dc['leaning over the table']||0) + ' | 共' + data.frame_count + '帧';
+                    $('#yoloVideoStats').textContent = statsText;
+                    // 播放标注视频
+                    $('#yoloVideoPlayer').src = data.video_url;
+                    $('#yoloVideoResult').style.display = 'block';
+                    // 更新统计卡片
+                    $('#statHandraising').textContent = dc['hand-raising'] || 0;
+                    $('#statReading').textContent = dc['reading'] || 0;
+                    $('#statWriting').textContent = dc['writing'] || 0;
+                    $('#statUsingphone').textContent = dc['using phone'] || 0;
+                    $('#statBowinghead').textContent = dc['bowing the head'] || 0;
+                    $('#statLeaningtable').textContent = dc['leaning over the table'] || 0;
+                    toast('视频推理完成', 'success');
+                } else {
+                    toast(data.error || '推理失败', 'error');
+                }
+            } catch (e) {
+                toast('请求失败: ' + e.message, 'error');
+            }
+            $('#yoloVideoProgress').textContent = '';
+        }
+    };
+
+    /* ================================================================
+       User Manage
+    ================================================================ */
+    var UserManage = {
+        load: async function() {
+            try {
+                var info = await api('/api/user-info');
+                if (!info || info.role !== 'admin') {
+                    $('#umNoPerm').style.display = 'block';
+                    $('#umContent').style.display = 'none';
+                    return;
+                }
+                $('#umNoPerm').style.display = 'none';
+                $('#umContent').style.display = 'block';
+
+                var data = await api('/api/admin/users');
+                if (!data || !data.users) {
+                    $('#umUserTable').innerHTML = '<tr><td colspan="4" style="text-align:center;color:#bbb;padding:24px;">暂无数据</td></tr>';
+                    return;
+                }
+                var rows = '';
+                data.users.forEach(function(u) {
+                    rows += '<tr style="border-bottom:1px solid #f0f0f0;">' +
+                        '<td style="padding:10px 14px;font-weight:500;">' + escHtml(u.username) + '</td>' +
+                        '<td style="padding:10px 14px;' + (u.role === 'admin' ? 'color:#e67e22;font-weight:500;' : 'color:#888;') + '">' + escHtml(u.role) + '</td>' +
+                        '<td style="padding:10px 14px;font-size:12px;color:#aaa;">' + escHtml(u.created_at ? u.created_at.slice(0,10) : '-') + '</td>' +
+                        '<td style="padding:10px 14px;text-align:center;">' +
+                            '<button class="btn-sm" onclick="UserManage.resetPwd(\'' + escAttr(u.username) + '\')" style="margin-right:6px;">重置密码</button>' +
+                            (u.role !== 'admin' ? '<button class="btn-sm btn-sm-del" onclick="UserManage.deleteUser(\'' + escAttr(u.username) + '\')">删除</button>' : '') +
+                        '</td>' +
+                    '</tr>';
+                });
+                $('#umUserTable').innerHTML = rows;
+            } catch (e) {
+                console.error('UserManage load error:', e);
+            }
+        },
+
+        resetPwd: async function(username) {
+            var ok = await confirmDialog('重置密码', '确定将「' + username + '」的密码重置为 <b>123456</b> 吗？');
+            if (!ok) return;
+            var res = await api('/api/admin/reset-password', {
+                method: 'POST',
+                body: JSON.stringify({ username: username, new_password: '123456' })
+            });
+            if (res.ok) {
+                toast('「' + username + '」密码已重置为 123456', 'success');
+            } else {
+                toast(res.error || '操作失败', 'error');
+            }
+        },
+
+        deleteUser: async function(username) {
+            var ok = await confirmDialog('删除用户', '确定要永久删除用户「' + username + '」吗？此操作不可撤销。');
+            if (!ok) return;
+            var res = await api('/api/admin/delete-user', {
+                method: 'POST',
+                body: JSON.stringify({ username: username })
+            });
+            if (res.ok) {
+                toast('已删除「' + username + '」', 'success');
+                UserManage.load();
+            } else {
+                toast(res.error || '操作失败', 'error');
+            }
+        }
+    };
+
+    // 简易 HTML 转义
+    function escHtml(s) {
+        if (!s) return '';
+        return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+    function escAttr(s) {
+        if (!s) return '';
+        return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+    }
+
+    /* ================================================================
+       Face Attendance
+    ================================================================ */
+    var Face = {
+        stream: null,
+        serverMode: false,
+        frozen: false,
+
+        refreshCameras: async function() {
+            var sel = $('#faceCamSelect');
+            sel.innerHTML = '<option value="">-- 正在搜索摄像头 --</option>';
+
+            var tempStream = null;
+            try {
+                tempStream = await navigator.mediaDevices.getUserMedia({ video: true });
+            } catch (e) {
+                console.warn('摄像头权限请求失败:', e.name);
+            }
+
+            try {
+                var devices = await navigator.mediaDevices.enumerateDevices();
+                var cameras = devices.filter(function(d) { return d.kind === 'videoinput'; });
+
+                sel.innerHTML = '<option value="">-- 选择摄像头 --</option>';
+
+                // 服务器摄像头放第一个，默认选中
+                var srvOpt = document.createElement('option');
+                srvOpt.value = 'server';
+                srvOpt.textContent = '📹 服务器摄像头（板子）';
+                sel.appendChild(srvOpt);
+
+                cameras.forEach(function(d) {
+                    var opt = document.createElement('option');
+                    opt.value = d.deviceId;
+                    opt.textContent = d.label || '本地摄像头';
+                    sel.appendChild(opt);
+                });
+
+                // 默认选中服务器摄像头
+                sel.value = 'server';
+                $('#faceServerIdxWrap').style.display = 'inline-flex';
+
+                sel.onchange = function() {
+                    $('#faceServerIdxWrap').style.display = sel.value === 'server' ? 'inline-flex' : 'none';
+                };
+            } catch (e) {
+                console.warn('枚举摄像头失败:', e);
+                sel.innerHTML = '<option value="server">📹 服务器摄像头（板子）</option>';
+                $('#faceServerIdxWrap').style.display = 'inline-flex';
+            }
+
+            if (tempStream) tempStream.getTracks().forEach(function(t) { t.stop(); });
+        },
+
+        toggleCamera: function() {
+            if (this.stream || this.serverMode) {
+                this.closeCamera();
+            } else {
+                this.startCamera();
+            }
+        },
+
+        startCamera: async function() {
+            var sel = $('#faceCamSelect');
+            if (!sel.value) { toast('请先选择摄像头', 'warning'); return; }
+
+            this.closeCamera();
+            this.frozen = false;
+            $('#faceCanvas').style.display = 'none';
+
+            if (sel.value === 'server') {
+                this.serverMode = true;
+                var camIdx = $('#faceServerCamIndex').value || 0;
+                $('#faceVideo').style.display = 'none';
+                $('#faceServerStream').style.display = 'block';
+                $('#faceServerStream').src = '/video_feed?camera=' + camIdx;
+            } else {
+                try {
+                    this.stream = await navigator.mediaDevices.getUserMedia({
+                        video: { width: { ideal: 640 }, height: { ideal: 480 }, deviceId: { exact: sel.value } }
+                    });
+                    this.serverMode = false;
+                    $('#faceVideo').style.display = 'block';
+                    $('#faceServerStream').style.display = 'none';
+                    var video = $('#faceVideo');
+                    video.srcObject = this.stream;
+                    await video.play();
+                } catch (e) {
+                    console.error('摄像头错误:', e.name, e.message);
+                    var msg = '摄像头开启失败';
+                    if (e.name === 'NotAllowedError') msg = '浏览器拒绝了摄像头权限，请在地址栏右侧允许后重试';
+                    else if (e.name === 'NotFoundError') msg = '未找到摄像头设备';
+                    else if (e.name === 'NotReadableError') msg = '摄像头被其他程序占用';
+                    toast(msg, 'error');
+                    return;
+                }
+            }
+
+            sel.disabled = true;
+            $('#btnFaceCamToggle').textContent = '关闭摄像头';
+            $('#btnFaceCamFreeze').disabled = false;
+            toast('摄像头已开启', 'success');
+        },
+
+        freezeCamera: function() {
+            if (this.frozen) return;
+            this.frozen = true;
+
+            if (this.serverMode) {
+                fetch('/video_snapshot').then(function(res) { return res.blob(); }).then(function(blob) {
+                    var url = URL.createObjectURL(blob);
+                    var img = new Image();
+                    img.onload = function() {
+                        var canvas = $('#faceCanvas');
+                        canvas.width = img.width;
+                        canvas.height = img.height;
+                        canvas.getContext('2d').drawImage(img, 0, 0);
+                        canvas.style.display = 'block';
+                        $('#faceServerStream').style.display = 'none';
+                        URL.revokeObjectURL(url);
+                    };
+                    img.src = url;
+                });
+            } else {
+                var video = $('#faceVideo');
+                var canvas = $('#faceCanvas');
+                canvas.width = video.videoWidth || 640;
+                canvas.height = video.videoHeight || 480;
+                canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
+                video.style.display = 'none';
+                canvas.style.display = 'block';
+            }
+
+            $('#btnFaceCamFreeze').disabled = true;
+            $('#btnFaceCamSnap').disabled = false;
+        },
+
+        resetCamera: function() {
+            this.frozen = false;
+            $("#faceCanvas").style.display = "none";
+            if (this.serverMode) {
+                $("#faceServerStream").style.display = "block";
+            } else {
+                $("#faceVideo").style.display = "block";
+            }
+            $("#btnFaceCamFreeze").disabled = true;
+            $("#btnFaceCamFreeze").textContent = "冻结画面";
+            $("#btnFaceCamSnap").disabled = true;
+            toast("就绪，可拍摄下一学生", "");
+        },
+
+        closeCamera: function() {
+            if (this.stream) {
+                this.stream.getTracks().forEach(function(t) { t.stop(); });
+                this.stream = null;
+            }
+            if (this.serverMode) {
+                fetch('/video_stop?camera=' + ($('#faceServerCamIndex').value || 0));
+                $('#faceServerStream').src = '';
+                $('#faceServerStream').style.display = 'none';
+                this.serverMode = false;
+            }
+            $('#faceVideo').srcObject = null;
+            $('#faceVideo').src = '';
+            $('#faceVideo').style.display = 'block';
+            $('#faceCanvas').style.display = 'none';
+            this.frozen = false;
+            var sel = $('#faceCamSelect');
+            sel.disabled = false;
+            $('#btnFaceCamToggle').textContent = '开启摄像头';
+            $('#btnFaceCamFreeze').disabled = true;
+            $('#btnFaceCamSnap').disabled = true;
+        },
+
+        snapAndSubmit: async function() {
+            var canvas = $('#faceCanvas');
+            var dataUrl = canvas.toDataURL('image/jpeg', 0.9);
+            toast('正在识别...', '');
+            var fd = new FormData();
+            fd.append('captured_image', dataUrl);
+            var res = await fetch('/api/face/attendance', { method: 'POST', body: fd });
+            var data = await res.json();
+            if (data) {
+                if (data.ok) {
+                    toast('考勤成功: ' + (data.student ? data.student.name : ''), 'success');
+                    this.resetCamera();
+                } else {
+                    toast(data.message || '识别失败', 'error');
+                }
+                this.loadSummary();
+            }
+        },
+
+        uploadAndSubmit: async function() {
+            var input = $('#faceFileInput');
+            if (!input.files.length) {
+                toast('请选择照片', 'warning');
+                return;
+            }
+            var fd = new FormData();
+            fd.append('recognize_photo', input.files[0]);
+            toast('正在识别...', '');
+            var res = await fetch('/api/face/attendance', { method: 'POST', body: fd });
+            var data = await res.json();
+            if (data) {
+                if (data.ok) {
+                    toast('考勤成功: ' + (data.student ? data.student.name : ''), 'success');
+                    this.resetCamera();
+                } else {
+                    toast(data.message || '识别失败', 'error');
+                }
+                input.value = '';
+                this.loadSummary();
+            }
+        },
+
+        manualSubmit: async function() {
+            var sid = $('#faceManualId').value.trim();
+            if (!sid) {
+                toast('请输入学号', 'warning');
+                return;
+            }
+            var fd = new FormData();
+            fd.append('student_id', sid);
+            var res = await fetch('/api/face/attendance', { method: 'POST', body: fd });
+            var data = await res.json();
+            if (data) {
+                if (data.ok) {
+                    toast('考勤成功: ' + (data.message || ''), 'success');
+                } else {
+                    toast(data.message || '考勤失败', 'error');
+                }
+                $('#faceManualId').value = '';
+                this.loadSummary();
+            }
+        },
+
+        uploadVideo: async function() {
+            var input = $('#faceVideoInput');
+            if (!input.files.length) {
+                toast('请选择视频文件', 'warning');
+                return;
+            }
+            var interval = $('#faceVideoInterval').value || 2;
+            $('#faceVideoProgress').textContent = '正在处理视频...';
+            var fd = new FormData();
+            fd.append('video', input.files[0]);
+            fd.append('interval', interval);
+            try {
+                var res = await fetch('/api/face/attendance/video', { method: 'POST', body: fd });
+                var data = await res.json();
+                if (data && data.ok) {
+                    // 显示识别结果
+                    var tbody = $('#faceVideoResultBody');
+                    tbody.innerHTML = '';
+                    if (data.recognized && data.recognized.length > 0) {
+                        data.recognized.forEach(function(r) {
+                            var tr = document.createElement('tr');
+                            tr.innerHTML = '<td>' + (r.name||'') + '</td><td>' + (r.student_id||'') + '</td><td>' + (r.class||'') + '</td><td>' + (r.match_confidence||'') + '</td>';
+                            tbody.appendChild(tr);
+                        });
+                    } else {
+                        var tr = document.createElement('tr');
+                        tr.innerHTML = '<td colspan="4" style="text-align:center;color:#999;">未识别到注册学生</td>';
+                        tbody.appendChild(tr);
+                    }
+                    $('#faceVideoResult').style.display = 'block';
+                    toast(data.message || '视频考勤完成', 'success');
+                    this.loadSummary();
+                } else {
+                    toast(data.error || '视频考勤失败', 'error');
+                }
+            } catch (e) {
+                toast('请求失败: ' + e.message, 'error');
+            }
+            $('#faceVideoProgress').textContent = '';
+        },
+
+        loadSummary: async function() {
+            var data = await api('/api/face/attendance/summary');
+            var tbody = $('#faceSummaryBody');
+            tbody.innerHTML = '';
+            if (data && data.students && data.students.length) {
+                var statusMap = { 'present': '<span style="color:#1abc9c;font-weight:bold;">&#x2713; 出勤</span>', 'absent': '<span style="color:#e74c3c;">&#x2717; 缺勤</span>', 'late': '<span style="color:#f39c12;">迟到</span>', 'leave': '<span style="color:#3498db;">请假</span>' };
+                data.students.forEach(function(s) {
+                    var statusHtml = statusMap[s.status] || s.status;
+                    var tr = document.createElement('tr');
+                    tr.innerHTML = '<td>' + (s.student_name || '') + '</td>' +
+                                   '<td>' + (s.student_id || '') + '</td>' +
+                                   '<td>' + (s.student_class || '') + '</td>' +
+                                   '<td>' + statusHtml + '</td>' +
+                                   '<td>' + (s.check_time || '--') + '</td>';
+                    tbody.appendChild(tr);
+                });
+            } else {
+                tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:#888;">暂无学生数据</td></tr>';
+            }
+        }
+    };
+
+    // Tab switching for face_attendance
+    $('#faceTabs').addEventListener('click', function(e) {
+        var tab = e.target.closest('.tab');
+        if (!tab) return;
+        var tabName = tab.dataset.tab;
+        $$('#faceTabs .tab').forEach(function(t) { t.classList.toggle('active', t.dataset.tab === tabName); });
+        $$('.tab-content[data-tab]').forEach(function(c) { c.classList.toggle('active', c.dataset.tab === tabName); });
+        Face.closeCamera();
+    });
+
+    /* ================================================================
+       Students
+    ================================================================ */
+    var Students = {
+        photoFiles: [],
+
+        init: function() {
+            var dz = $('#photoDropzone');
+            var fi = $('#photoFiles');
+
+            dz.addEventListener('click', function() { fi.click(); });
+            dz.addEventListener('dragover', function(e) { e.preventDefault(); dz.classList.add('dragover'); });
+            dz.addEventListener('dragleave', function() { dz.classList.remove('dragover'); });
+            dz.addEventListener('drop', function(e) {
+                e.preventDefault();
+                dz.classList.remove('dragover');
+                Students.addFiles(e.dataTransfer.files);
+            });
+            fi.addEventListener('change', function() {
+                Students.addFiles(fi.files);
+                fi.value = '';
+            });
+        },
+
+        addFiles: function(files) {
+            var self = this;
+            Array.from(files).forEach(function(f) {
+                if (!f.type.startsWith('image/')) return;
+                self.photoFiles.push(f);
+                var reader = new FileReader();
+                reader.onload = function(e) {
+                    var img = document.createElement('img');
+                    img.className = 'photo-thumb';
+                    img.src = e.target.result;
+                    $('#photoPreview').appendChild(img);
+                };
+                reader.readAsDataURL(f);
+            });
+        },
+
+        add: async function(ev) {
+            ev.preventDefault();
+            var name = $('#stuName').value.trim();
+            var sid = $('#stuId').value.trim();
+            var cls = $('#stuClass').value.trim();
+            if (!name || !sid || !cls) {
+                toast('请填写完整信息', 'warning');
+                return;
+            }
+            var fd = new FormData();
+            fd.append('student_name', name);
+            fd.append('student_id', sid);
+            fd.append('student_class', cls);
+            this.photoFiles.forEach(function(f) { fd.append('photos', f); });
+
+            var res = await fetch('/api/students/add', { method: 'POST', body: fd });
+            var data = await res.json();
+            if (data && data.ok) {
+                toast('添加成功', 'success');
+                $('#addStudentForm').reset();
+                $('#photoPreview').innerHTML = '';
+                this.photoFiles = [];
+                this.load();
+            } else {
+                toast(data.message || '添加失败', 'error');
+            }
+        },
+
+        load: async function() {
+            var data = await api('/api/students');
+            var grid = $('#studentGrid');
+            grid.innerHTML = '';
+            if (data && data.students && data.students.length) {
+                $('#studentsEmpty').style.display = 'none';
+                $('#studentCount').textContent = data.students.length;
+                var totalPhotos = 0;
+                data.students.forEach(function(s) {
+                    totalPhotos += (s.photos ? s.photos.length : (s.photo_count || 0));
+                    grid.appendChild(Students.renderCard(s));
+                });
+                $('#photoCount').textContent = totalPhotos;
+            } else {
+                $('#studentsEmpty').style.display = 'block';
+                $('#studentCount').textContent = '0';
+                $('#photoCount').textContent = '0';
+            }
+        },
+
+        renderCard: function(s) {
+            var div = document.createElement('div');
+            div.className = 'student-card';
+            div.style.flexDirection = 'column';
+            div.style.alignItems = 'stretch';
+            var initial = (s.name || '?').charAt(0);
+            var photos = s.photos || [];
+            var pcount = photos.length || (s.photo_count || 0);
+            var pid = s.person_id || ('person_' + (s.student_id || s.id));
+
+            // Top row: avatar + info + buttons
+            var topRow = document.createElement('div');
+            topRow.style.display = 'flex';
+            topRow.style.alignItems = 'center';
+            topRow.style.gap = '14px';
+            topRow.innerHTML =
+                '<div class="student-avatar">' + initial + '</div>' +
+                '<div class="student-info">' +
+                    '<div class="student-name">' + (s.name || '') + '</div>' +
+                    '<div class="student-meta">' + (s.student_id || '') + ' | ' + (s.class_name || s.class || '') + ' | 照片: ' + pcount + '</div>' +
+                '</div>' +
+                (pcount > 0 ? '<button class="expand-btn" onclick="Students.toggleExpand(this)">▼ 展开</button>' : '') +
+                '<button class="btn btn-danger btn-sm" onclick="Students.remove(\'' + (s.student_id || s.id) + '\')">删除</button>';
+            div.appendChild(topRow);
+
+            // Photo grid (hidden by default)
+            if (pcount > 0) {
+                var photoGrid = document.createElement('div');
+                photoGrid.className = 'student-photo-grid';
+                var inner = document.createElement('div');
+                inner.className = 'photo-grid-inner';
+                photos.forEach(function(fname, idx) {
+                    var item = document.createElement('div');
+                    item.className = 'photo-item';
+                    var img = document.createElement('img');
+                    img.className = 'photo-thumb';
+                    img.src = '/api/students/photos/' + pid + '/' + fname;
+                    img.onclick = function() {
+                        var allSrcs = photos.map(function(f) { return '/api/students/photos/' + pid + '/' + f; });
+                        openPhotoLightbox(img.src, allSrcs, idx);
+                    };
+                    item.appendChild(img);
+                    var delBtn = document.createElement('button');
+                    delBtn.className = 'photo-del-btn';
+                    delBtn.textContent = '×';
+                    delBtn.onclick = function(e) {
+                        e.stopPropagation();
+                        Students.deletePhoto(pid, fname, div);
+                    };
+                    item.appendChild(delBtn);
+                    inner.appendChild(item);
+                });
+                photoGrid.appendChild(inner);
+                div.appendChild(photoGrid);
+            }
+
+            return div;
+        },
+
+        toggleExpand: function(btn) {
+            var card = btn.closest('.student-card');
+            var grid = card.querySelector('.student-photo-grid');
+            if (!grid) return;
+            var isOpen = grid.classList.contains('show');
+            grid.classList.toggle('show');
+            btn.textContent = isOpen ? '▼ 展开' : '▲ 收起';
+        },
+
+        deletePhoto: async function(personId, filename, cardDiv) {
+            if (!confirm('确定删除照片 ' + filename + '？')) return;
+            var data = await api('/api/students/delete-photo', {
+                method: 'POST',
+                body: JSON.stringify({ person_id: personId, filename: filename })
+            });
+            if (data && data.ok) {
+                toast('照片已删除', 'success');
+                this.load();
+            } else {
+                toast(data.error || '删除失败', 'error');
+            }
+        },
+
+        remove: async function(sid) {
+            if (!confirm('确定删除该学生？')) return;
+            var data = await api('/api/students/delete/' + sid, { method: 'POST' });
+            if (data) {
+                toast('已删除', 'success');
+                this.load();
+            }
+        }
+    };
+    Students.init();
+
+    /* ================================================================
+       Face Records (full page)
+    ================================================================ */
+    var FaceRecords = {
+        load: async function() {
+            var [recordsData, studentsData] = await Promise.all([
+                api('/api/face/records'),
+                api('/api/students')
+            ]);
+            var records = (recordsData && recordsData.records) ? recordsData.records : [];
+            var students = (studentsData && studentsData.students) ? studentsData.students : [];
+            var tbody = $('#allFaceRecordsBody');
+            tbody.innerHTML = '';
+            
+            var studentMap = {};
+            students.forEach(function(s) {
+                var sid = s.student_id || '';
+                studentMap[sid] = { name: s.name || s.student_name || '', student_id: sid,
+                    class_name: s.class || s.student_class || '', total: 0, present: 0, last_time: '--' };
+            });
+            records.forEach(function(r) {
+                var sid = r.student_id || '';
+                if (sid && !studentMap[sid]) {
+                    studentMap[sid] = { name: r.student_name || r.name || '', student_id: sid,
+                        class_name: r.student_class || r.class_name || r.class || '', total: 0, present: 0, last_time: '--' };
+                }
+            });
+            records.forEach(function(r) {
+                var sid = r.student_id || '';
+                if (sid && studentMap[sid]) {
+                    studentMap[sid].total++;
+                    if (!r.status || r.status === 'present') studentMap[sid].present++;
+                    if (r.timestamp && (!studentMap[sid].last_time || r.timestamp > studentMap[sid].last_time)) {
+                        studentMap[sid].last_time = r.timestamp;
+                    }
+                }
+            });
+            var list = Object.values(studentMap);
+            list.sort(function(a, b) { return (a.student_id || '').localeCompare(b.student_id || ''); });
+            
+            if (list.length) {
+                $('#faceRecordsEmpty').style.display = 'none';
+                list.forEach(function(s) {
+                    var rate = s.total > 0 ? (s.present / s.total * 100).toFixed(0) + '%' : '--';
+                    var rateColor = s.total > 0 ? (s.present / s.total >= 0.8 ? '#1abc9c' : s.present / s.total >= 0.5 ? '#f39c12' : '#e74c3c') : '#888';
+                    var tr = document.createElement('tr');
+                    tr.innerHTML = '<td>' + (s.name || '--') + '</td>' +
+                        '<td>' + (s.student_id || '--') + '</td>' +
+                        '<td>' + (s.class_name || '--') + '</td>' +
+                        '<td>' + s.total + '</td>' +
+                        '<td style="color:' + rateColor + ';font-weight:bold;">' + rate + '</td>' +
+                        '<td style="font-size:12px;color:#888;">' + (s.last_time || '--') + '</td>';
+                    tbody.appendChild(tr);
+                });
+            } else {
+                $('#faceRecordsEmpty').style.display = 'block';
+            }
+        }
+    };
+
+    /* ================================================================
+       Dashboard
+    ================================================================ */
+    var Dashboard = {
+        load: async function() {
+            // Load multiple stats concurrently
+            var results = await Promise.all([
+                api('/api/students'),
+                api('/api/face/records')
+            ]);
+
+            var studentsData = results[0];
+            var recordsData = results[1];
+
+            var studentCount = (studentsData && studentsData.students) ? studentsData.students.length : 0;
+            var recordCount = (recordsData && recordsData.records) ? recordsData.records.length : 0;
+
+            $('#dashStudents').textContent = studentCount;
+            $('#dashAttendance').textContent = recordCount;
+
+            // Try to get YOLO stats
+            var yoloData = await api('/api/yolo/stats');
+            if (yoloData && yoloData.total != null) {
+                $('#dashYolo').textContent = yoloData.total;
+            } else {
+                $('#dashYolo').textContent = '-';
+            }
+        }
+    };
+
+    /* ================================================================
+       Energy Control — 节能控制
+    ================================================================ */
+    var Energy = {
+        _timer: null,
+        _pollInterval: 2000,  // 每2秒刷新
+
+        start: function() {
+            this.refresh();
+            if (this._timer) clearInterval(this._timer);
+            this._timer = setInterval(function() { Energy.refresh(); }, this._pollInterval);
+        },
+
+        stop: function() {
+            if (this._timer) {
+                clearInterval(this._timer);
+                this._timer = null;
+            }
+        },
+
+        refresh: async function() {
+            try {
+                var data = await api('/api/energy/status');
+                if (!data) return;
+
+                // 人数
+                $('#energyPersonCount').textContent = data.person_count != null ? data.person_count : '--';
+
+                // 灯光
+                var lightOn = data.light;
+                $('#energyLight').textContent = lightOn ? '开启' : '关闭';
+                $('#energyLight').style.color = lightOn ? '#27ae60' : '#e74c3c';
+                $('#energyLightCard').className = 'stat-card ' + (lightOn ? 'success' : 'danger');
+
+                // 风扇
+                var fanOn = data.fan;
+                $('#energyFan').textContent = fanOn ? '开启' : '关闭';
+                $('#energyFan').style.color = fanOn ? '#27ae60' : '#e74c3c';
+                $('#energyFanCard').className = 'stat-card ' + (fanOn ? 'warning' : '');
+
+                // 空调
+                var acOn = data.ac;
+                $('#energyAc').textContent = acOn ? '开启' : '关闭';
+                $('#energyAc').style.color = acOn ? '#3498db' : '#e74c3c';
+
+                // 系统状态
+                $('#energyFps').textContent = data.fps || '--';
+                $('#energyModel').textContent = data.model_loaded ? '已加载' : '未加载';
+                $('#energyModeLabel').textContent = '当前: ' + (data.simulate ? '模拟模式' : '真实GPIO模式');
+            } catch (e) {
+                console.warn('Energy refresh error:', e);
+            }
+        },
+
+        override: async function(device, state) {
+            try {
+                var res = await fetch('/api/energy/override', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({device: device, state: state})
+                });
+                var data = await res.json();
+                if (data.ok) {
+                    toast(device + ' 已' + (state ? '开启' : '关闭'), 'success');
+                    this.refresh();
+                } else {
+                    toast('操作失败', 'error');
+                }
+            } catch (e) {
+                toast('请求失败: ' + e.message, 'error');
+            }
+        },
+
+        toggleMode: async function() {
+            try {
+                var res = await fetch('/api/energy/toggle-simulate', { method: 'POST' });
+                var data = await res.json();
+                if (data.ok) {
+                    toast('已切换到 ' + (data.simulate ? '模拟模式' : '真实GPIO模式'), 'success');
+                    this.refresh();
+                }
+            } catch (e) {
+                toast('切换失败: ' + e.message, 'error');
+            }
+        }
+    };
+
+    /* ================================================================
+       Page Unload Cleanup
+    ================================================================ */
+    window.addEventListener('beforeunload', function() {
+        if (navigator.sendBeacon) {
+            navigator.sendBeacon('/video_stop', '');
+        }
+        Monitor.stopCamera();
+        Face.closeCamera();
+    });
+
+    /* ================================================================
+       Init: load default page data
+    ================================================================ */
+    Monitor.loadFiles();
+    Monitor.refreshCameras();
+    Face.refreshCameras();
+
+    // 暴露到全局作用域，供 HTML 中的 onclick 内联事件使用
+    window.Monitor = Monitor;
+    window.Face = Face;
+    window.Students = Students;
+    window.FaceRecords = FaceRecords;
+    window.Dashboard = Dashboard;
+
+    /* ================================================================
+       AI Chat
+    ================================================================ */
+    var chatHistory = [
+        { role: 'assistant', content: '你好！我是系统AI助手，可以帮你了解系统功能、查询数据。' }
+    ];
+    var chatOpen = false;
+
+    // 打开/关闭面板
+    $('#chatFab').addEventListener('click', function() {
+        chatOpen = !chatOpen;
+        $('#chatPanel').classList.toggle('open', chatOpen);
+        if (chatOpen) setTimeout(function() { $('#chatInput').focus(); }, 300);
+    });
+    $('#chatClose').addEventListener('click', function() {
+        chatOpen = false;
+        $('#chatPanel').classList.remove('open');
+    });
+
+    // 快捷问题
+    $$('#chatQuick button').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            var q = this.dataset.q;
+            $('#chatInput').value = q;
+            doSend();
+        });
+    });
+
+    // 发送
+    $('#chatSend').addEventListener('click', doSend);
+    $('#chatInput').addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') doSend();
+    });
+
+    async function doSend() {
+        var input = $('#chatInput');
+        var text = input.value.trim();
+        if (!text) return;
+        input.value = '';
+
+        // 添加用户消息
+        appendMsg('user', text);
+        chatHistory.push({ role: 'user', content: text });
+
+        // 显示 typing
+        var typingEl = appendMsg('ai', '', true);
+
+        try {
+            var res = await api('/api/chat', {
+                method: 'POST',
+                body: JSON.stringify({ messages: chatHistory })
+            });
+            // 移除 typing
+            typingEl.remove();
+            if (res && res.ok) {
+                appendMsg('ai', res.reply);
+                chatHistory.push({ role: 'assistant', content: res.reply });
+                // 限制历史长度
+                if (chatHistory.length > 20) chatHistory = chatHistory.slice(-20);
+            } else {
+                appendMsg('ai', res ? (res.error || '请求失败') : '网络错误');
+            }
+        } catch (e) {
+            typingEl.remove();
+            appendMsg('ai', '请求失败: ' + e.message);
+        }
+    }
+
+    function appendMsg(role, text, typing) {
+        var container = $('#chatMessages');
+        var div = document.createElement('div');
+        div.className = 'chat-msg ' + (role === 'user' ? 'user' : 'ai');
+        if (typing) {
+            div.innerHTML = '<div class="typing"><span></span><span></span><span></span></div>';
+        } else {
+            div.textContent = text;
+        }
+        container.appendChild(div);
+        container.scrollTop = container.scrollHeight;
+        return div;
+    }
+
+})();
+</script>
+</body>
+</html>

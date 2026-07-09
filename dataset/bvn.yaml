@@ -1,0 +1,13 @@
+# YOLO 训练配置 - 学生课堂行为检测
+# 类别: 0=hand_up(举手), 1=abnormal(异常), 2=sleep(睡觉), 3=phone(玩手机)
+
+path: G:/嵌赛最后一舞/qiansai/qiansai/datasets/bvn
+train: images/train
+val: images/val
+nc: 4
+
+names:
+  0: hand_up
+  1: abnormal
+  2: sleep
+  3: phone

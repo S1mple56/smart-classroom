@@ -1,0 +1,3723 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>学生校园监控管理系统</title>
+  <style>
+    /* ============================================================
+       CSS VARIABLES — 全局变量
+       ============================================================ */
+    :root {
+      /* 主色调 — 浅蓝系 */
+      --color-primary: #4A90D9;
+      --color-primary-light: #6BA5E7;
+      --color-primary-bg: #EDF4FC;
+      --color-primary-border: #C5D9F0;
+
+      /* 辅助色 */
+      --color-success: #52C41A;
+      --color-warning: #FAAD14;
+      --color-danger: #FF4D4F;
+
+      /* 中性色 */
+      --color-bg: #F0F4F8;
+      --color-white: #FFFFFF;
+      --color-text: #333333;
+      --color-text-sub: #666666;
+      --color-text-light: #999999;
+      --color-border: #E5E8EC;
+
+      /* 侧边栏 */
+      --sidebar-width: 240px;
+      --sidebar-bg: #1E2A3A;
+      --sidebar-text: #B0BEC5;
+      --sidebar-active: #4A90D9;
+      --sidebar-hover: rgba(255, 255, 255, 0.05);
+
+      /* 顶部栏 */
+      --header-height: 56px;
+
+      /* 通用 */
+      --radius: 6px;
+      --radius-lg: 10px;
+      --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.04);
+      --shadow-md: 0 2px 8px rgba(0, 0, 0, 0.06);
+      --shadow-lg: 0 4px 16px rgba(0, 0, 0, 0.08);
+      --transition: 0.2s ease;
+
+      --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+        "Helvetica Neue", Arial, "Noto Sans SC", sans-serif;
+    }
+
+    /* ============================================================
+       RESET
+       ============================================================ */
+    *,
+    *::before,
+    *::after {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      height: 100%;
+    }
+
+    body {
+      font-family: var(--font-sans);
+      font-size: 14px;
+      line-height: 1.6;
+      color: var(--color-text);
+      background: var(--color-bg);
+      -webkit-font-smoothing: antialiased;
+    }
+
+    a {
+      color: inherit;
+      text-decoration: none;
+    }
+
+    ul {
+      list-style: none;
+    }
+
+    img {
+      max-width: 100%;
+      display: block;
+    }
+
+    /* ============================================================
+       LAYOUT — 整体布局
+       ============================================================ */
+    .layout {
+      display: flex;
+      min-height: 100vh;
+    }
+
+    /* ============================================================
+       SIDEBAR — 左侧导航栏
+       ============================================================ */
+    .sidebar {
+      position: fixed;
+      top: 0;
+      left: 0;
+      bottom: 0;
+      width: var(--sidebar-width);
+      background: var(--sidebar-bg);
+      color: var(--sidebar-text);
+      display: flex;
+      flex-direction: column;
+      z-index: 100;
+      transition: transform var(--transition);
+    }
+
+    .sidebar__brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 0 20px;
+      height: var(--header-height);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+      flex-shrink: 0;
+    }
+
+    .sidebar__brand-icon {
+      width: 32px;
+      height: 32px;
+      background: var(--color-primary);
+      border-radius: var(--radius);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #fff;
+      font-size: 16px;
+      font-weight: 700;
+      flex-shrink: 0;
+    }
+
+    .sidebar__brand-text {
+      font-size: 15px;
+      font-weight: 600;
+      color: #ECEFF1;
+      white-space: nowrap;
+      letter-spacing: 0.5px;
+    }
+
+    .sidebar__nav {
+      flex: 1;
+      overflow-y: auto;
+      padding: 12px 0;
+    }
+
+    .sidebar__nav::-webkit-scrollbar {
+      width: 4px;
+    }
+
+    .sidebar__nav::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 2px;
+    }
+
+    .sidebar__group {
+      margin-bottom: 8px;
+    }
+
+    .sidebar__group-title {
+      padding: 12px 20px 6px;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: rgba(255, 255, 255, 0.3);
+    }
+
+    /* [FIX] transition 从 all 收敛为 background-color, color，避免布局属性参与过渡产生抖动；
+       时长 0.25s 比 0.2s 更平滑，hover 文字颜色过渡更自然 */
+    .sidebar__item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 20px;
+      margin: 2px 8px;
+      border-radius: var(--radius);
+      font-size: 13.5px;
+      cursor: pointer;
+      transition: background-color 0.25s ease, color 0.25s ease;
+      white-space: nowrap;
+    }
+
+    .sidebar__item:hover {
+      background: var(--sidebar-hover);
+      color: #ECEFF1;
+    }
+
+    .sidebar__item--active {
+      background: var(--sidebar-active);
+      color: #fff;
+    }
+
+    .sidebar__item--active:hover {
+      background: var(--sidebar-active);
+      color: #fff;
+    }
+
+    .sidebar__icon {
+      width: 18px;
+      height: 18px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      font-size: 15px;
+      opacity: 0.7;
+    }
+
+    .sidebar__item--active .sidebar__icon {
+      opacity: 1;
+    }
+
+    .sidebar__badge {
+      margin-left: auto;
+      background: var(--color-danger);
+      color: #fff;
+      font-size: 11px;
+      padding: 1px 7px;
+      border-radius: 10px;
+      font-weight: 500;
+    }
+
+    /* ============================================================
+       MAIN — 右侧主内容区
+       ============================================================ */
+    .main {
+      flex: 1;
+      margin-left: var(--sidebar-width);
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+    }
+
+    /* ============================================================
+       HEADER — 顶部栏
+       ============================================================ */
+    .header {
+      position: sticky;
+      top: 0;
+      height: var(--header-height);
+      background: var(--color-white);
+      border-bottom: 1px solid var(--color-border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 24px;
+      z-index: 50;
+      flex-shrink: 0;
+    }
+
+    .header__left {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .header__menu-btn {
+      display: none;
+      background: none;
+      border: none;
+      cursor: pointer;
+      padding: 4px;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .header__menu-btn span {
+      display: block;
+      width: 20px;
+      height: 2px;
+      background: var(--color-text);
+      border-radius: 1px;
+      transition: all var(--transition);
+    }
+
+    .header__page-title {
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--color-text);
+    }
+
+    .header__right {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .header__search {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      background: var(--color-bg);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius);
+      padding: 6px 12px;
+      font-size: 13px;
+      color: var(--color-text-light);
+      min-width: 200px;
+      cursor: pointer;
+      transition: border-color var(--transition);
+    }
+
+    /* [FIX] hover 边框使用 --color-primary 匹配主色调，比 --color-primary-light 对比更明确 */
+    .header__search:hover {
+      border-color: var(--color-primary);
+    }
+
+    /* ★ NEW: 实时时钟 */
+    .header__clock {
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--color-text-sub);
+      font-family: 'Courier New', monospace;
+      white-space: nowrap;
+      min-width: 56px;
+      text-align: center;
+    }
+
+    .header__icon-btn {
+      width: 34px;
+      height: 34px;
+      border-radius: var(--radius);
+      background: var(--color-bg);
+      border: 1px solid var(--color-border);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      position: relative;
+      transition: border-color var(--transition);
+      font-size: 15px;
+      color: var(--color-text-sub);
+    }
+
+    .header__icon-btn:hover {
+      border-color: var(--color-primary-light);
+    }
+
+    .header__dot {
+      position: absolute;
+      top: 6px;
+      right: 6px;
+      width: 7px;
+      height: 7px;
+      background: var(--color-danger);
+      border-radius: 50%;
+    }
+
+    .header__avatar {
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      background: var(--color-primary-bg);
+      border: 2px solid var(--color-primary-border);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      color: var(--color-primary);
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+
+    /* ============================================================
+       CONTENT — 内容区
+       ============================================================ */
+    .content {
+      flex: 1;
+      padding: 24px;
+      overflow-y: auto;
+    }
+
+    /* ============================================================
+       ★ NEW: PAGE SYSTEM — 多页面切换
+       所有页面默认隐藏，page--active 控制显示
+       ============================================================ */
+    .page {
+      display: none;
+    }
+
+    .page--active {
+      display: block;
+    }
+
+    /* ============================================================
+       统计卡片行
+       ============================================================ */
+    .stat-cards {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+
+    .stat-card {
+      background: var(--color-white);
+      border-radius: var(--radius-lg);
+      padding: 20px 24px;
+      box-shadow: var(--shadow-sm);
+      border: 1px solid var(--color-border);
+      transition: box-shadow var(--transition);
+    }
+
+    .stat-card:hover {
+      box-shadow: var(--shadow-md);
+    }
+
+    .stat-card__label {
+      font-size: 13px;
+      color: var(--color-text-sub);
+      margin-bottom: 8px;
+    }
+
+    .stat-card__value {
+      font-size: 28px;
+      font-weight: 700;
+      color: var(--color-text);
+      margin-bottom: 4px;
+    }
+
+    .stat-card__sub {
+      font-size: 12px;
+      color: var(--color-text-light);
+    }
+
+    .stat-card__sub span {
+      color: var(--color-success);
+      font-weight: 500;
+    }
+
+    /* ============================================================
+       内容面板
+       ============================================================ */
+    .panel {
+      background: var(--color-white);
+      border-radius: var(--radius-lg);
+      border: 1px solid var(--color-border);
+      box-shadow: var(--shadow-sm);
+      margin-bottom: 24px;
+    }
+
+    .panel__header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 16px 24px;
+      border-bottom: 1px solid var(--color-border);
+    }
+
+    .panel__title {
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--color-text);
+    }
+
+    .panel__body {
+      padding: 24px;
+    }
+
+    .panel__body--no-padding {
+      padding: 0;
+    }
+
+    /* ============================================================
+       按钮
+       ============================================================ */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 7px 16px;
+      font-size: 13px;
+      font-weight: 500;
+      border-radius: var(--radius);
+      border: 1px solid transparent;
+      cursor: pointer;
+      transition: all var(--transition);
+      font-family: inherit;
+      background: transparent;
+      color: var(--color-text);
+      white-space: nowrap;
+    }
+
+    .btn--primary {
+      background: var(--color-primary);
+      color: #fff;
+      border-color: var(--color-primary);
+    }
+
+    .btn--primary:hover {
+      background: var(--color-primary-light);
+    }
+
+    .btn--outline {
+      background: transparent;
+      color: var(--color-primary);
+      border-color: var(--color-primary-border);
+    }
+
+    .btn--outline:hover {
+      background: var(--color-primary-bg);
+    }
+
+    .btn--sm {
+      padding: 4px 10px;
+      font-size: 12px;
+    }
+
+    /* ★ NEW: 图标按钮 — 纯图标小按钮 */
+    .btn--icon {
+      width: 32px;
+      height: 32px;
+      padding: 0;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 15px;
+    }
+
+    /* ============================================================
+       表格
+       ============================================================ */
+    .table-wrap {
+      overflow-x: auto;
+    }
+
+    .table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+
+    /* [FIX] 移除 text-transform:uppercase（中文无效），letter-spacing 降至 0.3px，
+       添加 vertical-align: middle，操作列居中 */
+    .table th {
+      text-align: left;
+      vertical-align: middle;
+      padding: 12px 16px;
+      background: var(--color-bg);
+      color: var(--color-text-sub);
+      font-weight: 600;
+      font-size: 12px;
+      letter-spacing: 0.3px;
+      border-bottom: 1px solid var(--color-border);
+      white-space: nowrap;
+    }
+
+    .table td {
+      padding: 12px 16px;
+      vertical-align: middle;
+      border-bottom: 1px solid var(--color-bg);
+      color: var(--color-text);
+    }
+
+    .table tr:hover td {
+      background: #FAFBFC;
+    }
+
+    /* ★ NEW: 表格空状态 */
+    .table-empty {
+      text-align: center;
+      padding: 48px 24px;
+      color: var(--color-text-light);
+      font-size: 13px;
+    }
+
+    /* ============================================================
+       状态标签
+       ============================================================ */
+    .tag {
+      display: inline-block;
+      padding: 2px 10px;
+      font-size: 12px;
+      border-radius: 12px;
+      font-weight: 500;
+      white-space: nowrap;
+    }
+
+    .tag--success {
+      background: #EDF9E8;
+      color: #389E0D;
+    }
+
+    .tag--warning {
+      background: #FFF8E1;
+      color: #D48806;
+    }
+
+    /* ★ NEW: 危险/缺席标签 */
+    .tag--danger {
+      background: #FFF1F0;
+      color: #CF1322;
+    }
+
+    .tag--info {
+      background: var(--color-primary-bg);
+      color: var(--color-primary);
+    }
+
+    /* ============================================================
+       两栏 / 三栏布局
+       ============================================================ */
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 24px;
+    }
+
+    .grid-3 {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 24px;
+    }
+
+    /* ============================================================
+       空状态占位
+       ============================================================ */
+    .empty-placeholder {
+      padding: 48px 24px;
+      text-align: center;
+      color: var(--color-text-light);
+      border: 2px dashed var(--color-border);
+      border-radius: var(--radius);
+      font-size: 13px;
+      transition: border-color var(--transition);
+    }
+
+    .empty-placeholder:hover {
+      border-color: var(--color-primary-light);
+    }
+
+    /* ============================================================
+       ★ NEW: DROPDOWN — 下拉选择框
+       复用变量 --radius / --shadow-md / --transition 保持风格一致
+       ============================================================ */
+    .dropdown {
+      position: relative;
+      display: inline-block;
+      min-width: 200px;
+    }
+
+    .dropdown__trigger {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      width: 100%;
+      padding: 8px 14px;
+      font-size: 13px;
+      font-family: inherit;
+      color: var(--color-text);
+      background: var(--color-white);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius);
+      cursor: pointer;
+      transition: border-color var(--transition);
+    }
+
+    .dropdown__trigger:hover {
+      border-color: var(--color-primary-light);
+    }
+
+    .dropdown__trigger::after {
+      content: '';
+      width: 0;
+      height: 0;
+      border-left: 4px solid transparent;
+      border-right: 4px solid transparent;
+      border-top: 5px solid var(--color-text-sub);
+      transition: transform var(--transition);
+    }
+
+    .dropdown--open .dropdown__trigger::after {
+      transform: rotate(180deg);
+    }
+
+    .dropdown__menu {
+      position: absolute;
+      top: calc(100% + 4px);
+      left: 0;
+      right: 0;
+      background: var(--color-white);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow-md);
+      z-index: 60;
+      display: none;
+      overflow: hidden;
+    }
+
+    .dropdown--open .dropdown__menu {
+      display: block;
+    }
+
+    .dropdown__option {
+      padding: 9px 14px;
+      font-size: 13px;
+      cursor: pointer;
+      transition: background var(--transition);
+    }
+
+    .dropdown__option:hover {
+      background: var(--color-primary-bg);
+    }
+
+    .dropdown__option--selected {
+      color: var(--color-primary);
+      font-weight: 500;
+      background: var(--color-primary-bg);
+    }
+
+    /* ★ NEW: 移动端下拉框改为弹窗选择 */
+    .dropdown-modal {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 200;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .dropdown-modal--visible {
+      display: flex;
+    }
+
+    .dropdown-modal__mask {
+      position: absolute;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.4);
+    }
+
+    .dropdown-modal__content {
+      position: relative;
+      background: var(--color-white);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-lg);
+      width: 85%;
+      max-width: 360px;
+      max-height: 60vh;
+      overflow-y: auto;
+      z-index: 1;
+    }
+
+    .dropdown-modal__title {
+      padding: 14px 18px;
+      font-size: 14px;
+      font-weight: 600;
+      border-bottom: 1px solid var(--color-border);
+    }
+
+    .dropdown-modal__option {
+      padding: 12px 18px;
+      font-size: 14px;
+      cursor: pointer;
+      border-bottom: 1px solid var(--color-bg);
+      transition: background var(--transition);
+    }
+
+    .dropdown-modal__option:hover {
+      background: var(--color-primary-bg);
+    }
+
+    .dropdown-modal__option--selected {
+      color: var(--color-primary);
+      font-weight: 500;
+    }
+
+    /* ============================================================
+       ★ NEW: MONITOR — 实时监控模块样式
+       ============================================================ */
+
+    /* 监控工具栏 */
+    .monitor-toolbar {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 16px;
+      flex-wrap: wrap;
+    }
+
+    .monitor-toolbar__spacer {
+      flex: 1;
+    }
+
+    /* 视频播放器容器 — 16:9 宽高比 */
+    .monitor-video {
+      position: relative;
+      width: 100%;
+      aspect-ratio: 16 / 9;
+      background: #1a1a2e;
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+      box-shadow: var(--shadow-md);
+      cursor: pointer;
+    }
+
+    /* 视频占位画面 */
+    .monitor-video__placeholder {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      color: rgba(255, 255, 255, 0.4);
+      font-size: 13px;
+      transition: opacity var(--transition);
+    }
+
+    .monitor-video__placeholder-icon {
+      font-size: 56px;
+      margin-bottom: 8px;
+      opacity: 0.5;
+    }
+
+    /* 播放中时淡化占位文字 */
+    .monitor-video--playing .monitor-video__placeholder {
+      opacity: 0.3;
+    }
+
+    /* 中央播放/暂停按钮 */
+    .monitor-video__play-btn {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 64px;
+      height: 64px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.2);
+      border: 2px solid rgba(255, 255, 255, 0.5);
+      color: #fff;
+      font-size: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all var(--transition);
+      z-index: 2;
+    }
+
+    .monitor-video__play-btn:hover {
+      background: rgba(255, 255, 255, 0.35);
+      border-color: #fff;
+    }
+
+    /* 视频内时间戳水印 */
+    .monitor-video__timestamp {
+      position: absolute;
+      top: 12px;
+      right: 16px;
+      color: rgba(255, 255, 255, 0.7);
+      font-size: 13px;
+      font-family: 'Courier New', monospace;
+      z-index: 2;
+      pointer-events: none;
+    }
+
+    .monitor-video__media {
+      display: none;
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      background: #000;
+      z-index: 1;
+    }
+
+    /* overlay canvas should be transparent and above the video */
+    #monitorOverlayCanvas {
+      background: transparent !important;
+      z-index: 3 !important;
+      pointer-events: none;
+    }
+
+    /* 视频加载中 */
+    .monitor-video--loading .monitor-video__play-btn {
+      opacity: 0.5;
+      pointer-events: none;
+    }
+
+    .monitor-video__spinner {
+      display: none;
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 36px;
+      height: 36px;
+      border: 3px solid rgba(255, 255, 255, 0.2);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      z-index: 3;
+    }
+
+    .monitor-video--loading .monitor-video__spinner {
+      display: block;
+    }
+
+    .monitor-video--loading .monitor-video__play-btn {
+      display: none;
+    }
+
+    @keyframes spin {
+      to {
+        transform: translate(-50%, -50%) rotate(360deg);
+      }
+    }
+
+    /* 视频底部状态栏 */
+    .monitor-status-bar {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      margin-top: 12px;
+      padding: 10px 16px;
+      background: var(--color-white);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius);
+      flex-wrap: wrap;
+    }
+
+    .monitor-status-bar__spacer {
+      flex: 1;
+    }
+
+    /* 摄像头在线/离线指示 */
+    .monitor-status-dot {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 13px;
+      color: var(--color-text-sub);
+    }
+
+    .monitor-status-dot::before {
+      content: '';
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    .monitor-status-dot--online::before {
+      background: var(--color-success);
+    }
+
+    .monitor-status-dot--offline::before {
+      background: var(--color-danger);
+    }
+
+    .ai-inference-grid {
+      display: grid;
+      grid-template-columns: minmax(220px, 1.3fr) minmax(220px, 1fr);
+      gap: 16px;
+      align-items: end;
+    }
+
+    .ai-inference-field {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .ai-inference-label {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--color-text-sub);
+      letter-spacing: 0.3px;
+    }
+
+    .ai-inference-select {
+      width: 100%;
+      padding: 10px 14px;
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius);
+      background: var(--color-white);
+      color: var(--color-text);
+      font: inherit;
+      outline: none;
+      transition: border-color var(--transition), box-shadow var(--transition);
+    }
+
+    .ai-inference-select:focus {
+      border-color: var(--color-primary);
+      box-shadow: 0 0 0 3px rgba(74, 144, 217, 0.12);
+    }
+
+    .ai-inference-actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    .ai-inference-meta {
+      margin-top: 12px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      font-size: 12px;
+      color: var(--color-text-sub);
+    }
+
+    .ai-inference-meta strong {
+      color: var(--color-text);
+      font-weight: 600;
+    }
+
+    /* ★ NEW: 全屏时的视频样式 */
+    .monitor-video:fullscreen {
+      border-radius: 0;
+      background: #000;
+    }
+
+    .monitor-video:fullscreen .monitor-video__placeholder {
+      font-size: 16px;
+    }
+
+    /* ============================================================
+       ★ NEW: TOAST — 轻提示
+       ============================================================ */
+    .toast-container {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      z-index: 9999;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .toast {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 18px;
+      background: var(--color-white);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow-lg);
+      font-size: 13px;
+      color: var(--color-text);
+      animation: toastIn 0.3s ease;
+      pointer-events: auto;
+      border-left: 3px solid var(--color-primary);
+    }
+
+    .toast--success {
+      border-left-color: var(--color-success);
+    }
+
+    .toast--error {
+      border-left-color: var(--color-danger);
+    }
+
+    @keyframes toastIn {
+      from {
+        opacity: 0;
+        transform: translateX(20px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateX(0);
+      }
+    }
+
+    /* ============================================================
+       MOBILE SIDEBAR OVERLAY
+       ============================================================ */
+    .sidebar-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.35);
+      z-index: 99;
+    }
+
+    /* ============================================================
+       RESPONSIVE — 平板 & 手机
+       ============================================================ */
+    @media (max-width: 1024px) {
+      .grid-2 {
+        grid-template-columns: 1fr;
+      }
+
+      .grid-3 {
+        grid-template-columns: 1fr 1fr;
+      }
+    }
+
+    @media (max-width: 768px) {
+
+      .sidebar {
+        transform: translateX(-100%);
+      }
+
+      .sidebar--open {
+        transform: translateX(0);
+      }
+
+      .sidebar-overlay--visible {
+        display: block;
+      }
+
+      .main {
+        margin-left: 0;
+      }
+
+      .header__menu-btn {
+        display: flex;
+      }
+
+      .header__search {
+        display: none;
+      }
+
+      .content {
+        padding: 16px;
+      }
+
+      .grid-2,
+      .grid-3 {
+        grid-template-columns: 1fr;
+      }
+
+      .ai-inference-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .ai-inference-actions {
+        justify-content: flex-start;
+      }
+
+      .stat-cards {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 20px;
+      }
+
+      /* ★ NEW: 移动端下拉框隐藏，改用弹窗 */
+      .dropdown {
+        display: none;
+      }
+
+      .dropdown--mobile {
+        display: inline-block;
+      }
+
+      /* ★ NEW: 移动端监控工具栏换行 */
+      .monitor-toolbar {
+        gap: 8px;
+      }
+
+      .monitor-toolbar__spacer {
+        display: none;
+      }
+
+      /* ★ NEW: 移动端状态栏 */
+      .monitor-status-bar {
+        gap: 10px;
+      }
+    }
+
+    /* [FIX] 480px 以下卡片单列，gap 增大至 20px 避免卡片拥挤 */
+    @media (max-width: 480px) {
+      .stat-cards {
+        grid-template-columns: 1fr;
+        gap: 20px;
+      }
+
+      .panel__header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 8px;
+      }
+    }
+  </style>
+</head>
+
+<body class="layout">
+
+  <!-- ==========================================================
+       SIDEBAR OVERLAY — 移动端遮罩
+       ========================================================== -->
+  <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+  <!-- ==========================================================
+       ★ NEW: TOAST CONTAINER — 全局轻提示容器
+       ========================================================== -->
+  <div class="toast-container" id="toastContainer"></div>
+
+  <!-- ==========================================================
+       SIDEBAR — 左侧导航栏
+       ★ NEW: 每个菜单项添加 data-page 属性用于页面切换
+       ========================================================== -->
+  <aside class="sidebar" id="sidebar">
+
+    <div class="sidebar__brand">
+      <div class="sidebar__brand-icon">&#9881;</div>
+      <span class="sidebar__brand-text">校园监控系统</span>
+    </div>
+
+    <nav class="sidebar__nav">
+
+      <!-- [顺序调整] 监控管理置顶 — 校园监控系统核心功能优先 -->
+      <!-- 监控管理 -->
+      <div class="sidebar__group">
+        <div class="sidebar__group-title"><!-- 监控管理 --></div>
+        <a class="sidebar__item" data-page="face_attendance">
+          <span class="sidebar__icon">&#128100;</span> 人脸考勤
+        </a>
+        <a class="sidebar__item sidebar__item--active" data-page="monitor">
+          <span class="sidebar__icon">&#9679;</span> 实时监控
+        </a>
+        <a class="sidebar__item" data-page="alerts">
+          <span class="sidebar__icon">&#9679;</span> 异常告警
+        </a>
+        <a class="sidebar__item" data-page="visitor">
+          <span class="sidebar__icon">&#9679;</span> 访客登记
+        </a>
+      </div>
+
+      <!-- 数据概览 -->
+      <div class="sidebar__group">
+        <div class="sidebar__group-title"><!-- 数据概览 --></div>
+        <a class="sidebar__item" data-page="dashboard">
+          <span class="sidebar__icon">&#9632;</span> 工作台
+        </a>
+        <a class="sidebar__item" data-page="overview">
+          <span class="sidebar__icon">&#9733;</span> 数据总览
+        </a>
+      </div>
+
+      <!-- 学生管理 -->
+      <div class="sidebar__group">
+        <div class="sidebar__group-title"><!-- 学生管理 --></div>
+        <a class="sidebar__item" data-page="students">
+          <span class="sidebar__icon">&#9679;</span> 学生档案
+          <span class="sidebar__badge"><!-- 数量 --></span>
+        </a>
+        <a class="sidebar__item" data-page="attendance">
+          <span class="sidebar__icon">&#9679;</span> 考勤记录
+        </a>
+        <a class="sidebar__item" data-page="grades">
+          <span class="sidebar__icon">&#9679;</span> 成绩管理
+        </a>
+        <a class="sidebar__item" data-page="behavior">
+          <span class="sidebar__icon">&#9679;</span> 行为记录
+          <span class="sidebar__badge"><!-- 数量 --></span>
+        </a>
+      </div>
+
+    </nav>
+  </aside>
+
+  <!-- ==========================================================
+       MAIN — 右侧主区域
+       ========================================================== -->
+  <div class="main">
+
+    <!-- ==========================================================
+         HEADER — 顶部栏
+         ========================================================== -->
+    <header class="header">
+      <div class="header__left">
+        <button class="header__menu-btn" id="menuBtn">
+          <span></span><span></span><span></span>
+        </button>
+        <!-- ★ NEW: 页面标题由 JS 动态更新 -->
+        <span class="header__page-title" id="pageTitle">实时监控</span>
+      </div>
+
+      <div class="header__right">
+        <!-- ★ NEW: 实时时钟 -->
+        <span class="header__clock" id="headerClock">--:--:--</span>
+        <button class="header__icon-btn" id="captureBtn" title="拍照识别">&#128247;</button>
+        <div class="header__search">
+          &#128269; <span><!-- 搜索... --></span>
+        </div>
+        <div class="header__icon-btn">
+          &#128276;
+          <div class="header__dot"></div>
+        </div>
+        <div class="header__avatar" title="管理员">
+          <span>&#128100;</span>
+        </div>
+      </div>
+    </header>
+
+    <!-- ==========================================================
+         CONTENT — 内容区
+         ★ NEW: 每个 .page 代表一个页面，通过 data-page 匹配
+         ========================================================== -->
+    <div class="content" id="contentArea">
+
+      <!-- =====================================================
+           PAGE: 工作台 (dashboard) — 原有仪表盘内容
+           ===================================================== -->
+      <div class="page" data-page="dashboard">
+
+        <div class="stat-cards">
+          <div class="stat-card">
+            <div class="stat-card__label">在校学生</div>
+            <div class="stat-card__value">1,248</div>
+            <div class="stat-card__sub"><span>&#9650; 12</span> 较上月</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-card__label">今日考勤率</div>
+            <div class="stat-card__value">98.6%</div>
+            <div class="stat-card__sub"><span>&#9650; 0.3%</span> 较昨日</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-card__label">在线摄像头</div>
+            <div class="stat-card__value">32</div>
+            <div class="stat-card__sub">共 36 台设备</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-card__label">今日告警</div>
+            <div class="stat-card__value">3</div>
+            <div class="stat-card__sub"><span style="color:var(--color-danger);">&#9650; 2</span> 待处理</div>
+          </div>
+        </div>
+
+        <div class="grid-2">
+          <div class="panel">
+            <div class="panel__header">
+              <span class="panel__title">最近考勤记录</span>
+              <button class="btn btn--outline btn--sm">查看全部</button>
+            </div>
+            <div class="panel__body">
+              <div class="empty-placeholder">
+                &#128197; 考勤记录图表 — 可嵌入 ECharts / Chart.js
+              </div>
+            </div>
+          </div>
+
+          <div class="panel">
+            <div class="panel__header">
+              <span class="panel__title">最新告警</span>
+            </div>
+            <div class="panel__body">
+              <div class="empty-placeholder">
+                &#9888; 告警列表 — 可放置最近异常记录
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div><!-- /page:dashboard -->
+
+      <!-- =====================================================
+           ★ NEW: PAGE: 实时监控 (monitor) — 完整实现
+           ===================================================== -->
+      <div class="page page--active" data-page="monitor">
+
+        <!-- 监控工具栏：下拉框 + 按钮 -->
+        <div class="monitor-toolbar">
+
+          <!-- PC端下拉框 -->
+          <div class="dropdown" id="cameraDropdown">
+            <button class="dropdown__trigger" id="cameraTrigger">
+              <span id="cameraSelectedText">1号教学楼 - 东门入口</span>
+            </button>
+            <div class="dropdown__menu" id="cameraMenu">
+              <!-- JS 动态渲染 -->
+            </div>
+          </div>
+
+          <!-- ★ NEW: 移动端下拉按钮（触发弹窗） -->
+          <button class="btn btn--outline dropdown--mobile" id="cameraMobileBtn" style="display:none;">
+            &#128247; <span id="cameraMobileLabel">切换摄像头</span>
+          </button>
+
+          <div class="monitor-toolbar__spacer"></div>
+          <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--color-text-sub);">
+            间隔
+            <input id="liveIntervalInput" type="number" min="200" step="100" value="2000" style="width:80px;padding:6px;border-radius:6px;border:1px solid var(--color-border);background:var(--color-white);margin-left:6px;">
+            ms
+          </label>
+          <label style="display:flex;align-items:center;gap:6px;font-size:13px;color:var(--color-text-sub);margin-left:8px;">
+            <input type="checkbox" id="mockInferenceCheckbox"> 模拟识别
+          </label>
+          <label style="display:flex;align-items:center;gap:6px;font-size:13px;color:var(--color-text-sub);margin-left:8px;">
+            <input type="checkbox" id="autoMarkCheckbox"> 自动标记考勤
+          </label>
+
+          <div class="monitor-toolbar__spacer"></div>
+
+          <button class="btn btn--outline" id="refreshBtn" title="刷新视频流">
+            &#8635; 刷新
+          </button>
+          <button class="btn btn--outline" id="fullscreenBtn" title="全屏播放">
+            &#9974; 全屏
+          </button>
+          <button class="btn btn--primary" id="liveInferenceBtn" title="实时识别" style="margin-left:8px;">
+            &#9881; 实时识别
+          </button>
+          <button class="btn btn--primary" id="markAttendanceBtn" title="标记考勤" style="margin-left:8px;">
+            &#128197; 标记考勤
+          </button>
+        </div>
+
+        <!-- 视频播放器 — 16:9 容器 -->
+        <div class="monitor-video" id="monitorVideo">
+          <!-- 加载转圈 -->
+          <div class="monitor-video__spinner"></div>
+
+          <video class="monitor-video__media" id="monitorLiveVideo" autoplay muted playsinline></video>
+          <canvas id="monitorOverlayCanvas" class="monitor-video__media" style="pointer-events:none;"></canvas>
+          <img class="monitor-video__media" id="monitorImageResult" alt="模型识别结果" style="display:none;">
+          <video class="monitor-video__media" id="monitorVideoResult" controls playsinline></video>
+
+          <!-- 中央占位 -->
+          <div class="monitor-video__placeholder">
+            <div class="monitor-video__placeholder-icon">&#128247;</div>
+            <span id="monitorPlaceholderText">点击播放</span>
+          </div>
+
+          <!-- 播放/暂停按钮 -->
+          <button class="monitor-video__play-btn" id="playPauseBtn" title="播放 / 暂停">
+            &#9654;
+          </button>
+
+          <!-- 时间水印 -->
+          <div class="monitor-video__timestamp" id="monitorTimestamp">
+            --:--:--
+          </div>
+        </div>
+
+        <!-- 底部状态栏 -->
+        <div class="monitor-status-bar">
+          <span class="monitor-status-dot monitor-status-dot--online" id="cameraStatusDot">
+            <!-- JS 动态更新 -->
+          </span>
+          <span style="font-size:13px;color:var(--color-text-sub);">
+            设备编号：<strong id="cameraDeviceId"><!-- JS 动态填充 --></strong>
+          </span>
+          <span style="font-size:13px;color:var(--color-text-sub);">
+            分辨率：<strong>1920×1080</strong>
+          </span>
+          <div class="monitor-status-bar__spacer"></div>
+          <button class="btn btn--outline btn--sm" id="replayBtn" title="查看录像回放">
+            &#128249; 录像回放
+          </button>
+        </div>
+
+        <div class="panel" style="margin-top:24px;">
+          <div class="panel__header">
+            <span class="panel__title">模型识别</span>
+          </div>
+          <div class="panel__body">
+            <div class="ai-inference-grid">
+              <div class="ai-inference-field">
+                <label class="ai-inference-label" for="inferenceFileSelect">选择待识别素材</label>
+                <select class="ai-inference-select" id="inferenceFileSelect">
+                  <option value="">正在加载素材列表...</option>
+                </select>
+              </div>
+              <div class="ai-inference-actions">
+                <button class="btn btn--outline" id="reloadFilesBtn">&#8635; 刷新素材</button>
+                <button class="btn btn--primary" id="runInferenceBtn">&#9658; 开始识别</button>
+              </div>
+            </div>
+            <div class="ai-inference-meta">
+              <span>当前模型：<strong id="modelInfoText">加载中...</strong></span>
+              <span>当前结果：<strong id="inferenceStatusText">未执行</strong></span>
+            </div>
+          </div>
+        </div>
+
+        <div class="stat-cards" style="margin-top:24px;">
+          <div class="stat-card">
+            <div class="stat-card__label">举手人数</div>
+            <div class="stat-card__value" id="handUpCountValue">0</div>
+            <div class="stat-card__sub" id="handUpCountSub">等待识别结果</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-card__label">睡觉人数</div>
+            <div class="stat-card__value" id="sleepCountValue">0</div>
+            <div class="stat-card__sub" id="sleepCountSub">等待识别结果</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-card__label">玩手机人数</div>
+            <div class="stat-card__value" id="phoneCountValue">0</div>
+            <div class="stat-card__sub" id="phoneCountSub">等待识别结果</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-card__label">异常人数</div>
+            <div class="stat-card__value" id="abnormalCountValue">0</div>
+            <div class="stat-card__sub" id="abnormalCountSub">等待识别结果</div>
+          </div>
+        </div>
+
+        <div class="panel" style="margin-top:24px;">
+          <div class="panel__header">
+            <span class="panel__title">识别统计明细</span>
+          </div>
+          <div class="panel__body panel__body--no-padding">
+            <div class="table-wrap">
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th>类别</th>
+                    <th>数量</th>
+                    <th>说明</th>
+                  </tr>
+                </thead>
+                <tbody id="inferenceStatsTableBody"></tbody>
+              </table>
+            </div>
+            <div class="table-empty" id="inferenceStatsEmpty">
+              运行识别后，这里会显示模型返回的动态统计结果。
+            </div>
+          </div>
+        </div>
+
+        <!-- 下方：多路摄像头预览占位 -->
+        <div class="panel" style="margin-top:24px;">
+          <div class="panel__header">
+            <span class="panel__title">全部摄像头</span>
+          </div>
+          <div class="panel__body">
+            <div class="grid-3" id="cameraGrid">
+              <!-- JS 动态渲染缩略图 -->
+            </div>
+          </div>
+        </div>
+
+        <!-- ★ NEW: 移动端摄像头选择弹窗 -->
+        <div class="dropdown-modal" id="cameraModal">
+          <div class="dropdown-modal__mask" id="cameraModalMask"></div>
+          <div class="dropdown-modal__content" id="cameraModalContent">
+            <div class="dropdown-modal__title">选择摄像头</div>
+            <!-- JS 动态渲染 -->
+          </div>
+        </div>
+
+      </div><!-- /page:monitor -->
+
+      <!-- =====================================================
+           ★ NEW: PAGE: 考勤记录 (attendance) — 完整数据表格
+           ===================================================== -->
+      <div class="page" data-page="attendance">
+
+        <!-- 顶部操作栏 -->
+        <div class="panel">
+          <div class="panel__header">
+            <span class="panel__title">学生考勤记录</span>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;">
+              <div class="dropdown" id="classFilterDropdown">
+                <button class="dropdown__trigger" id="classFilterTrigger">
+                  <span id="classFilterText">全部班级</span>
+                </button>
+                <div class="dropdown__menu" id="classFilterMenu">
+                  <!-- JS 渲染 -->
+                </div>
+              </div>
+              <button class="btn btn--primary btn--sm" id="exportAllBtn">
+                &#128229; 导出全部
+              </button>
+            </div>
+          </div>
+          <div class="panel__body panel__body--no-padding">
+            <div class="table-wrap">
+              <table class="table" id="attendanceTable">
+                <thead>
+                  <tr>
+                    <th>学号</th>
+                    <th>姓名</th>
+                    <th>班级</th>
+                    <th>考勤状态</th>
+                    <th>考勤时间</th>
+                    <th>操作</th>
+                  </tr>
+                </thead>
+                <tbody id="attendanceTableBody">
+                  <!-- JS 动态渲染 -->
+                </tbody>
+              </table>
+            </div>
+            <!-- 空状态（数据为空时显示，JS控制） -->
+            <div class="table-empty" id="attendanceEmpty" style="display:none;">
+              &#128203; 暂无考勤数据
+            </div>
+          </div>
+        </div>
+
+        <!-- 分页占位 -->
+        <div style="display:flex;align-items:center;justify-content:flex-end;gap:8px;padding:0 4px;">
+          <span style="font-size:13px;color:var(--color-text-sub);" id="attendancePagination">
+            <!-- JS 动态更新 -->
+          </span>
+        </div>
+
+      </div><!-- /page:attendance -->
+
+      <!-- =====================================================
+           ★ NEW: PAGE: 人脸考勤 (face_attendance) — 从外部 attendance.html 迁移
+           ===================================================== -->
+      <div class="page" data-page="face_attendance">
+        <div id="faceAttendance">
+          <style>
+            /* Scoped styles for face attendance page */
+            #faceAttendance .topbar{display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:24px;padding-bottom:18px;border-bottom:1px solid #e0e4ef}
+            #faceAttendance .page-heading{font-size:18px;font-weight:700;color:#1c2033}
+            #faceAttendance .page-sub{font-size:12px;color:#8891aa;margin-top:3px}
+            #faceAttendance .clock{font-size:12px;color:#5a6080;font-variant-numeric:tabular-nums}
+            #faceAttendance .alerts{margin-bottom:20px}
+            #faceAttendance .alert{display:flex;align-items:center;justify-content:space-between;padding:11px 16px;border-radius:8px;border-left:3px solid;margin-bottom:8px;font-size:13px}
+            #faceAttendance .alert-success{background:rgba(42,157,92,.10);border-color:#2a9d5c;color:#1e7a3d}
+            #faceAttendance .alert-error{background:rgba(192,57,43,.10);border-color:#c0392b;color:#a83224}
+            #faceAttendance .stat-box{background:#fff;border:1px solid #e0e4ef;border-radius:8px;padding:18px 20px}
+            #faceAttendance .stat-num{font-size:28px;font-weight:700;color:#3b7dd8;margin-bottom:4px}
+            #faceAttendance .card{background:#fff;border:1px solid #e0e4ef;border-radius:8px;margin-bottom:20px;overflow:hidden}
+            #faceAttendance .card-head{display:flex;justify-content:space-between;align-items:center;padding:16px 20px;border-bottom:1px solid #e0e4ef}
+            #faceAttendance .card-body{padding:20px}
+            #faceAttendance .tab-bar{display:flex;gap:2px;background:#f0f2f7;border-radius:8px;padding:3px;margin-bottom:20px}
+            #faceAttendance .tab-btn{flex:1;padding:8px 12px;background:transparent;border:none;border-radius:6px;font-size:12.5px;font-weight:600;color:#8891aa;cursor:pointer}
+            #faceAttendance .tab-btn.active{background:#fff;color:#1c2033;box-shadow:0 1px 4px rgba(0,0,0,.10)}
+            #faceAttendance .tab-panel{display:none}
+            #faceAttendance .tab-panel.active{display:block}
+            #faceAttendance .camera-wrap{position:relative;border-radius:8px;overflow:hidden;background:#000;border:1px solid #e0e4ef;max-width:560px;margin:0 auto}
+            #faceAttendance .camera-wrap video{width:100%;display:block}
+            #faceAttendance .cam-badge{position:absolute;top:10px;right:10px;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;background:rgba(0,0,0,.7);color:#5a6080}
+            #faceAttendance .cam-badge.live{background:#2a9d5c;color:#fff}
+            #faceAttendance .cam-badge.frozen{background:#b87333;color:#fff}
+            #faceAttendance .snap-preview{margin-top:16px;text-align:center;display:none}
+            #faceAttendance .snap-preview img{max-width:280px;border-radius:8px;border:1px solid #e0e4ef}
+            #faceAttendance .upload-zone{border:1.5px dashed #e0e4ef;border-radius:8px;padding:22px;text-align:center;cursor:pointer;position:relative}
+            #faceAttendance .upload-zone:hover{border-color:#3b7dd8;background:rgba(59,125,216,.08)}
+            #faceAttendance .btn{display:inline-flex;align-items:center;gap:6px;padding:8px 18px;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer}
+            #faceAttendance .btn-primary{background:#3b7dd8;color:#fff}
+            #faceAttendance .btn-success{background:#2a9d5c;color:#fff}
+            #faceAttendance .btn-danger{background:#c0392b;color:#fff}
+            #faceAttendance table{width:100%;border-collapse:collapse}
+            #faceAttendance thead th{padding:10px 14px;text-align:left;font-size:11px;font-weight:700;color:#8891aa;text-transform:uppercase;border-bottom:1px solid #e0e4ef}
+            #faceAttendance tbody td{padding:11px 14px;font-size:13px;color:#1c2033;border-bottom:1px solid #e0e4ef}
+            #faceAttendance .empty-state{text-align:center;padding:48px 20px;color:#8891aa}
+          </style>
+
+          <main class="main" style="margin-left:0;padding:24px;">
+            <div class="topbar">
+              <div>
+                <div class="page-heading">人脸考勤</div>
+                <div class="page-sub">通过摄像头拍照或上传图片完成考勤</div>
+              </div>
+              <div class="clock" id="clock">--:--:--</div>
+            </div>
+
+            <div class="alerts" id="alertArea"></div>
+
+            <div class="stats-row">
+              <div class="stat-box">
+                <div class="stat-num" id="statStudents">0</div>
+                <div class="stat-desc">已录入学生</div>
+              </div>
+              <div class="stat-box">
+                <div class="stat-num" id="statRecords">0</div>
+                <div class="stat-desc">累计考勤记录</div>
+              </div>
+            </div>
+
+            <div class="card">
+              <div class="card-head"><div class="card-title"><span class="icon">◉</span>发起考勤</div></div>
+              <div class="card-body">
+                <div class="tab-bar">
+                  <button class="tab-btn active" onclick="switchTab('camera', this)">摄像头拍照</button>
+                  <button class="tab-btn" onclick="switchTab('upload', this)">上传照片</button>
+                  <button class="tab-btn" onclick="switchTab('manual', this)">学号录入</button>
+                </div>
+
+                <div class="tab-panel active" id="tab-camera">
+                  <div class="camera-wrap">
+                    <video id="camFeed" autoplay playsinline></video>
+                    <img id="camImg" src="" alt="摄像头画面" style="display:none;">
+                    <canvas id="snapCanvas"></canvas>
+                    <div id="camBadge" class="cam-badge">未开启</div>
+                  </div>
+                  <div class="cam-controls" style="display:flex;justify-content:center;gap:10px;margin-top:14px;">
+                    <button id="btnStart" class="btn btn-success" onclick="startCam()">开启摄像头</button>
+                    <button id="btnFreeze" class="btn btn-ghost hidden" onclick="freezeCam()">定格画面</button>
+                    <button id="btnResume" class="btn btn-ghost hidden" onclick="resumeCam()">继续预览</button>
+                    <button id="btnSnap" class="btn btn-primary hidden" onclick="snapPhoto()">拍照取样</button>
+                    <button id="btnStop" class="btn btn-danger hidden" onclick="stopCam()">关闭摄像头</button>
+                  </div>
+                  <div class="snap-preview" id="snapPreview">
+                    <img id="snapImg" src="" alt="拍照预览">
+                    <div class="snap-label">当前拍照样本</div>
+                  </div>
+                  <form id="camForm" method="POST" class="hidden" style="margin-top:16px;">
+                    <input type="hidden" id="capturedImageData" name="captured_image">
+                    <button type="submit" class="btn btn-success" style="width:100%">提交考勤</button>
+                  </form>
+                </div>
+
+                <div class="tab-panel" id="tab-upload">
+                  <form method="POST" enctype="multipart/form-data" id="uploadForm">
+                    <div class="form-field" style="margin-bottom:16px;">
+                      <label>选择或拖入学生照片</label>
+                      <div class="upload-zone" id="uploadZone2">
+                        <input type="file" name="recognize_photo" id="uploadInput" accept="image/*" required onchange="onUploadChosen(this)">
+                        <div class="upload-icon">↑</div>
+                        <div class="upload-text">点击选择或将照片拖拽至此</div>
+                        <div class="upload-hint">支持 JPG / PNG</div>
+                        <div class="upload-chosen" id="uploadChosen"></div>
+                      </div>
+                    </div>
+                    <button type="submit" class="btn btn-primary">识别并考勤</button>
+                  </form>
+                </div>
+
+                <div class="tab-panel" id="tab-manual">
+                  <form method="POST" id="manualForm">
+                    <div class="form-field"><label>输入学号</label><input type="text" name="student_id" id="manualId" placeholder="请输入学号" required></div>
+                    <button type="submit" class="btn btn-primary">确认考勤</button>
+                  </form>
+                </div>
+              </div>
+            </div>
+
+            <div class="card">
+              <div class="card-head"><div class="card-title"><span class="icon">≡</span>考勤记录</div><span style="font-size:12px;color:#8891aa">共 <span id="recCount">0</span> 条</span></div>
+              <div class="card-body" style="padding-top:8px;">
+                <div id="recordsContainer"></div>
+              </div>
+            </div>
+          </main>
+
+          <script>
+            // Scoped script for face attendance page
+            (function(){
+              function tick(){var el=document.getElementById('clock'); if(el) el.textContent=new Date().toLocaleString('zh-CN',{hour12:false});}
+              tick(); setInterval(tick,1000);
+
+              function switchTab(id, btn){document.querySelectorAll('#faceAttendance .tab-panel').forEach(p=>p.classList.remove('active'));document.querySelectorAll('#faceAttendance .tab-btn').forEach(b=>b.classList.remove('active'));document.getElementById('tab-'+id).classList.add('active');btn.classList.add('active');}
+              window.switchTab = switchTab;
+
+              // Camera logic (scoped IDs are unique)
+              const camFeed = document.getElementById('camFeed');
+              const camImg = document.getElementById('camImg');
+              const camBadge = document.getElementById('camBadge');
+              const btnStart = document.getElementById('btnStart');
+              const btnFreeze = document.getElementById('btnFreeze');
+              const btnResume = document.getElementById('btnResume');
+              const btnSnap = document.getElementById('btnSnap');
+              const btnStop = document.getElementById('btnStop');
+              const snapPreview = document.getElementById('snapPreview');
+              const snapImg = document.getElementById('snapImg');
+              const camForm = document.getElementById('camForm');
+              const capturedImageData = document.getElementById('capturedImageData');
+
+              let camStream = null; let frozen=false; let isBoardMode=false;
+
+              async function startCam(){try{var hostname=window.location.hostname;isBoardMode=(hostname!=='127.0.0.1'&&hostname!=='localhost');if(isBoardMode){camImg.src='http://'+hostname+':5000/video_feed';camImg.style.display='block';camFeed.style.display='none';camStream='board';}else{camStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'user',width:{ideal:640},height:{ideal:480}},audio:false});camFeed.srcObject=camStream;camFeed.style.display='block';camImg.style.display='none';camFeed.play();}btnStart.classList.add('hidden');btnFreeze.classList.remove('hidden');btnSnap.classList.remove('hidden');btnStop.classList.remove('hidden');camBadge.textContent='直播中';camBadge.className='cam-badge live';snapPreview.style.display='none';camForm.classList.add('hidden');}catch(e){alert('无法访问摄像头/视频流，请确认设备已连接或视频流服务已启动。\n错误: '+e.message);} }
+              window.startCam = startCam;
+
+              function freezeCam(){if(!camStream) return; if(isBoardMode){var hostname=window.location.hostname;camImg.src='http://'+hostname+':5000/video_snapshot';}else{camStream.getTracks().forEach(t=>t.enabled=false);}frozen=true;btnFreeze.classList.add('hidden');btnResume.classList.remove('hidden');camBadge.textContent='已定格';camBadge.className='cam-badge frozen';}
+              window.freezeCam = freezeCam;
+
+              function resumeCam(){if(!camStream) return; if(isBoardMode){var hostname=window.location.hostname;camImg.src='http://'+hostname+':5000/video_feed';}else{camStream.getTracks().forEach(t=>t.enabled=true);}frozen=false;btnResume.classList.add('hidden');btnFreeze.classList.remove('hidden');camBadge.textContent='直播中';camBadge.className='cam-badge live';snapPreview.style.display='none';camForm.classList.add('hidden');}
+              window.resumeCam = resumeCam;
+
+              function snapPhoto(){const canvas=document.getElementById('snapCanvas');var source=isBoardMode?camImg:camFeed;var w=isBoardMode?(camImg.naturalWidth||640):(camFeed.videoWidth||640);var h=isBoardMode?(camImg.naturalHeight||480):(camFeed.videoHeight||480);canvas.width=w;canvas.height=h;canvas.getContext('2d').drawImage(source,0,0,canvas.width,canvas.height);try{const dataUrl=canvas.toDataURL('image/jpeg',0.9);snapImg.src=dataUrl;snapPreview.style.display='block';capturedImageData.value=dataUrl;camForm.classList.remove('hidden');}catch(e){var hostname=window.location.hostname;snapImg.src='http://'+hostname+':5000/video_snapshot';snapPreview.style.display='block';capturedImageData.value='';camForm.classList.remove('hidden');}freezeCam();}
+              window.snapPhoto = snapPhoto;
+
+              function stopCam(){if(camStream){if(camStream!=='board'){camStream.getTracks().forEach(t=>t.stop());}camStream=null;}camFeed.srcObject=null;camFeed.src='';camFeed.style.display='none';camImg.src='';camImg.style.display='none';frozen=false;isBoardMode=false;btnStart.classList.remove('hidden');btnFreeze.classList.add('hidden');btnResume.classList.add('hidden');btnSnap.classList.add('hidden');btnStop.classList.add('hidden');camBadge.textContent='未开启';camBadge.className='cam-badge';snapPreview.style.display='none';camForm.classList.add('hidden');}
+              window.stopCam = stopCam;
+
+              function onUploadChosen(input){document.getElementById('uploadChosen').textContent = input.files.length ? `已选择：${input.files[0].name}` : '';}
+              window.onUploadChosen = onUploadChosen;
+
+              setTimeout(()=>{document.querySelectorAll('#faceAttendance .alert').forEach(a=>{a.style.transition='opacity .4s';a.style.opacity='0';setTimeout(()=>a.remove(),400);});},5000);
+
+              // placeholder: populate stats and records if backend data available
+              try{document.getElementById('statStudents').textContent = window.FA_STATS && window.FA_STATS.students || '0';document.getElementById('statRecords').textContent = window.FA_STATS && window.FA_STATS.records || '0';}catch(e){}
+
+              // records rendering
+              function renderRecords(records){var c=records && records.length||0;document.getElementById('recCount').textContent=c;var container=document.getElementById('recordsContainer');if(!container) return; if(c===0){container.innerHTML='<div class="empty-state"><div class="empty-icon">○</div><div class="empty-text">暂无考勤记录</div></div>';return;} var html='<table><thead><tr><th>姓名</th><th>学号</th><th>班级</th><th>状态</th><th>考勤时间</th></tr></thead><tbody>';records.forEach(function(r){html+='<tr><td>'+ (r.student_name||'') +'</td><td>'+ (r.student_id||'') +'</td><td>'+ (r.student_class||'') +'</td><td><span class="tag-present">出勤</span></td><td>'+ (r.timestamp||'') +'</td></tr>';});html+='</tbody></table>';container.innerHTML=html}
+              window.renderFaceAttendanceRecords = renderRecords;
+
+              // initial empty
+              renderRecords([]);
+            })();
+          </script>
+        </div>
+      </div><!-- /page:face_attendance -->
+
+      <!-- =====================================================
+           PAGE: 数据总览 (overview) — 占位
+           ===================================================== -->
+      <div class="page" data-page="overview">
+        <div class="panel">
+          <div class="panel__header"><span class="panel__title">数据总览</span></div>
+          <div class="panel__body">
+            <div class="empty-placeholder">
+              &#128202; 数据总览页面 — 待添加统计图表与报表
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- =====================================================
+           PAGE: 学生档案 (students) — 占位
+           ===================================================== -->
+      <div class="page" data-page="students">
+        <div class="panel">
+          <div class="panel__header"><span class="panel__title">学生档案</span></div>
+          <div class="panel__body">
+            <div class="empty-placeholder">
+              &#128100; 学生档案页面 — 待添加搜索、列表与详情
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- =====================================================
+           其余占位页面
+           ===================================================== -->
+      <div class="page" data-page="grades">
+        <div class="panel">
+          <div class="panel__header"><span class="panel__title">成绩管理</span></div>
+          <div class="panel__body">
+            <div class="empty-placeholder">&#128218; 成绩管理页面 — 待添加</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="page" data-page="behavior">
+        <div class="panel">
+          <div class="panel__header"><span class="panel__title">行为记录</span></div>
+          <div class="panel__body">
+            <div class="empty-placeholder">&#128221; 行为记录页面 — 待添加</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="page" data-page="alerts">
+        <div class="panel">
+          <div class="panel__header">
+            <span class="panel__title">异常告警</span>
+            <div style="display:flex;gap:8px;align-items:center;">
+              <button class="btn btn--outline btn--sm" id="refreshAlertsBtn">刷新</button>
+            </div>
+          </div>
+          <div class="panel__body">
+            <div id="alertsListContainer">
+              <div id="alertsEmpty" class="table-empty">当前暂无告警</div>
+              <div id="alertsList"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="page" data-page="visitor">
+        <div class="panel">
+          <div class="panel__header"><span class="panel__title">访客登记</span></div>
+          <div class="panel__body">
+            <div class="empty-placeholder">&#128196; 访客登记页面 — 待添加</div>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /content -->
+
+    <!-- ==========================================================
+         FOOTER — 底部
+         ========================================================== -->
+    <div
+      style="text-align:center;padding:20px 24px;color:var(--color-text-light);font-size:12px;border-top:1px solid var(--color-border);margin-top:auto;">
+      学生校园监控管理系统 &copy; 2026
+    </div>
+
+  </div><!-- /main -->
+
+  <!-- ==========================================================
+       SCRIPTS
+       ★ NEW: 在原侧边栏交互基础上，新增页面路由、监控、
+              考勤表格、Toast、下拉框等交互逻辑
+       ========================================================== -->
+  <script>
+    (function () {
+      /* ==========================================================
+         1. 侧边栏交互（保留原逻辑）
+         ========================================================== */
+      var menuBtn = document.getElementById('menuBtn');
+      var sidebar = document.getElementById('sidebar');
+      var overlay = document.getElementById('sidebarOverlay');
+
+      function openSidebar() {
+        sidebar.classList.add('sidebar--open');
+        overlay.classList.add('sidebar-overlay--visible');
+      }
+
+      function closeSidebar() {
+        sidebar.classList.remove('sidebar--open');
+        overlay.classList.remove('sidebar-overlay--visible');
+      }
+
+      menuBtn.addEventListener('click', function () {
+        sidebar.classList.contains('sidebar--open') ? closeSidebar() : openSidebar();
+      });
+
+      overlay.addEventListener('click', closeSidebar);
+
+      /* ==========================================================
+         1b. ★ NEW: 实时时钟 — 每秒刷新
+         ========================================================== */
+      var headerClock = document.getElementById('headerClock');
+
+      function pad(n) { return (n < 10 ? '0' : '') + n; }
+
+      function updateClock() {
+        if (!headerClock) return;
+        var now = new Date();
+        var str = now.getFullYear() + '-'
+          + pad(now.getMonth() + 1) + '-'
+          + pad(now.getDate()) + ' '
+          + pad(now.getHours()) + ':'
+          + pad(now.getMinutes()) + ':'
+          + pad(now.getSeconds());
+        headerClock.textContent = str;
+      }
+
+      updateClock();
+      setInterval(updateClock, 1000);
+
+      /* ==========================================================
+         2. ★ NEW: 页面路由系统
+            点击侧边栏 → 切换对应 .page 的显示 / 更新标题
+         ========================================================== */
+      var pageTitle = document.getElementById('pageTitle');
+      var allPages = document.querySelectorAll('.page');
+      var allNavItems = sidebar.querySelectorAll('.sidebar__item');
+
+      // 页面名称映射（data-page → 中文标题）
+      var pageNames = {
+        dashboard: '工作台',
+        overview: '数据总览',
+        students: '学生档案',
+        attendance: '考勤记录',
+        grades: '成绩管理',
+        behavior: '行为记录',
+        monitor: '实时监控',
+        alerts: '异常告警',
+        visitor: '访客登记'
+      };
+
+      /**
+       * 切换到指定页面
+       * @param {string} pageName - data-page 值
+       */
+      function switchPage(pageName) {
+        // 隐藏所有页面，显示目标页面
+        allPages.forEach(function (p) {
+          p.classList.remove('page--active');
+        });
+        var target = document.querySelector('.page[data-page="' + pageName + '"]');
+        if (target) {
+          target.classList.add('page--active');
+        }
+
+        // 更新顶部栏标题
+        if (pageTitle) {
+          pageTitle.textContent = pageNames[pageName] || pageName;
+        }
+      }
+
+      // [FIX] 移动端点击菜单项 → 先移除 sidebar transition → 瞬间关闭 → 恢复 transition
+      // 避免遮罩消失后侧边栏仍因 0.2s 过渡在滑动造成的视觉不同步
+      function closeSidebarInstant() {
+        sidebar.style.transition = 'none';
+        sidebar.classList.remove('sidebar--open');
+        overlay.classList.remove('sidebar-overlay--visible');
+        // 强制回流后恢复 transition
+        void sidebar.offsetWidth;
+        sidebar.style.transition = '';
+      }
+
+      // 绑定侧边栏菜单项点击
+      allNavItems.forEach(function (item) {
+        item.addEventListener('click', function (e) {
+          var page = this.getAttribute('data-page');
+          if (!page) return;
+
+          // 切换激活态
+          allNavItems.forEach(function (el) { el.classList.remove('sidebar__item--active'); });
+          this.classList.add('sidebar__item--active');
+
+          // 切换页面
+          switchPage(page);
+
+          // 移动端瞬间收起侧边栏（无过渡延迟）
+          if (window.innerWidth <= 768) {
+            closeSidebarInstant();
+          }
+        });
+      });
+
+      /* ==========================================================
+         3. ★ NEW: Toast 轻提示工具
+            showToast('消息内容', 'success'|'error')
+         ========================================================== */
+      var toastContainer = document.getElementById('toastContainer');
+
+      function showToast(message, type) {
+        type = type || '';
+        var el = document.createElement('div');
+        el.className = 'toast' + (type ? ' toast--' + type : '');
+        el.textContent = message;
+        toastContainer.appendChild(el);
+
+        // 3 秒后自动消失
+        setTimeout(function () {
+          el.style.opacity = '0';
+          el.style.transform = 'translateX(20px)';
+          el.style.transition = '0.3s ease';
+          setTimeout(function () {
+            if (el.parentNode) el.parentNode.removeChild(el);
+          }, 300);
+        }, 3000);
+      }
+
+      /* ==========================================================
+         4. ★ NEW: 通用下拉框逻辑
+            PC 端：点击触发 → 展开菜单 → 点击选项 → 选中
+            移动端：隐式自动降级为弹窗模式（见下方监控模块）
+         ========================================================== */
+      /**
+       * 初始化一个下拉框
+       * @param {Object} opts
+       *   el: 容器 .dropdown 元素
+       *   onSelect: function(value, text) — 选中回调
+       */
+      function initDropdown(opts) {
+        var container = opts.el;
+        var trigger = container.querySelector('.dropdown__trigger');
+        var menu = container.querySelector('.dropdown__menu');
+        var options = menu.querySelectorAll('.dropdown__option');
+
+        // 点击触发器：展开/关闭
+        trigger.addEventListener('click', function (e) {
+          e.stopPropagation();
+          var isOpen = container.classList.contains('dropdown--open');
+          // 关闭所有其他下拉框
+          document.querySelectorAll('.dropdown--open').forEach(function (d) {
+            d.classList.remove('dropdown--open');
+          });
+          if (!isOpen) {
+            container.classList.add('dropdown--open');
+          }
+        });
+
+        // 点击选项
+        options.forEach(function (opt) {
+          opt.addEventListener('click', function (e) {
+            e.stopPropagation();
+            var val = opt.getAttribute('data-value');
+            var text = opt.textContent.trim();
+            // 更新选中态
+            options.forEach(function (o) { o.classList.remove('dropdown__option--selected'); });
+            opt.classList.add('dropdown__option--selected');
+            // 更新触发器文本
+            var span = trigger.querySelector('span');
+            if (span) span.textContent = text;
+            // 关闭菜单
+            container.classList.remove('dropdown--open');
+            // 回调
+            if (opts.onSelect) opts.onSelect(val, text);
+          });
+        });
+
+        // 点击外部关闭
+        document.addEventListener('click', function () {
+          container.classList.remove('dropdown--open');
+        });
+      }
+
+      /* ==========================================================
+         5. ★ NEW: 实时监控模块 — 核心逻辑
+         ========================================================== */
+
+      // ---- 5a. 本地摄像头数据 ----
+      var cameras = [
+        { id: 'local-default', name: '本机摄像头', status: 'online', deviceId: 'default', mediaDeviceId: '' }
+      ];
+
+      var currentCamera = cameras[0];  // 当前选中的摄像头
+      var isPlaying = false;
+      var isFullscreen = false;
+      var timerInterval = null;
+      var timerSeconds = 0;
+      var localStream = null;
+
+      // DOM 引用
+      var monitorVideo = document.getElementById('monitorVideo');
+      var playPauseBtn = document.getElementById('playPauseBtn');
+      var monitorTimestamp = document.getElementById('monitorTimestamp');
+      var monitorPlaceholder = document.getElementById('monitorPlaceholderText');
+      var cameraStatusDot = document.getElementById('cameraStatusDot');
+      var cameraDeviceId = document.getElementById('cameraDeviceId');
+      var cameraSelectedText = document.getElementById('cameraSelectedText');
+      var refreshBtn = document.getElementById('refreshBtn');
+      var fullscreenBtn = document.getElementById('fullscreenBtn');
+      var replayBtn = document.getElementById('replayBtn');
+      var liveInferenceBtn = document.getElementById('liveInferenceBtn');
+      var cameraMenu = document.getElementById('cameraMenu');
+      var cameraGrid = document.getElementById('cameraGrid');
+      var cameraDropdown = document.getElementById('cameraDropdown');
+      var monitorLiveVideo = document.getElementById('monitorLiveVideo');
+      var monitorOverlayCanvas = document.getElementById('monitorOverlayCanvas');
+      var overlayCtx = monitorOverlayCanvas && monitorOverlayCanvas.getContext ? monitorOverlayCanvas.getContext('2d') : null;
+      var monitorImageResult = document.getElementById('monitorImageResult');
+      var monitorVideoResult = document.getElementById('monitorVideoResult');
+      var inferenceFileSelect = document.getElementById('inferenceFileSelect');
+      var reloadFilesBtn = document.getElementById('reloadFilesBtn');
+      var runInferenceBtn = document.getElementById('runInferenceBtn');
+      var modelInfoText = document.getElementById('modelInfoText');
+      var inferenceStatusText = document.getElementById('inferenceStatusText');
+      var handUpCountValue = document.getElementById('handUpCountValue');
+      var handUpCountSub = document.getElementById('handUpCountSub');
+      var sleepCountValue = document.getElementById('sleepCountValue');
+      var sleepCountSub = document.getElementById('sleepCountSub');
+      var phoneCountValue = document.getElementById('phoneCountValue');
+      var phoneCountSub = document.getElementById('phoneCountSub');
+      var abnormalCountValue = document.getElementById('abnormalCountValue');
+      var abnormalCountSub = document.getElementById('abnormalCountSub');
+      var inferenceStatsTableBody = document.getElementById('inferenceStatsTableBody');
+      var inferenceStatsEmpty = document.getElementById('inferenceStatsEmpty');
+      var inferenceFiles = [];
+      var inferenceRunning = false;
+      var liveInferenceActive = false;
+      var liveInferenceInterval = null; // legacy name (may hold timeout id)
+      var liveInferenceTimeoutId = null; // current scheduled timeout id
+      var liveInferenceIntervalMs = 2000; // 每帧间隔（毫秒） — 默认 2s 减少主线程压力
+      var liveCaptureBusy = false; // semaphore to avoid overlapping requests
+      var liveCaptureErrorCount = 0; // consecutive error counter
+      var mockInference = false; // 启用本地模拟推理（用于无后端时调试）
+      var liveIntervalInput = null;
+      var mockInferenceCheckbox = null;
+      var classLabelMap = {
+        hand_up: '举手',
+        sleep: '睡觉',
+        phone: '玩手机',
+        abnormal: '异常'
+      };
+
+      function supportsLocalCamera() {
+        return !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
+      }
+
+      // --- Debug helpers: monitor media state and stream track end events ---
+      function attachStreamTrackHandlers(stream) {
+        if (!stream || !stream.getTracks) return;
+        stream.getTracks().forEach(function (t) {
+          t.onended = function () {
+            console.warn('MediaTrack ended:', t.kind);
+            showToast('摄像头轨道已结束', 'error');
+            // ensure UI reflects stopped state
+            try { stopPlayback(); } catch (e) { console.error(e); }
+          };
+          t.onmute = function () {
+            console.warn('MediaTrack muted:', t.kind);
+            showToast('摄像头被静音/禁用', 'error');
+          };
+        });
+      }
+
+      if (monitorLiveVideo) {
+        monitorLiveVideo.addEventListener('playing', function () {
+          console.info('monitorLiveVideo playing');
+        });
+        monitorLiveVideo.addEventListener('pause', function () {
+          console.warn('monitorLiveVideo paused');
+          showToast('摄像头已暂停', 'error');
+        });
+        monitorLiveVideo.addEventListener('ended', function () {
+          console.warn('monitorLiveVideo ended');
+          showToast('摄像头已结束', 'error');
+        });
+        monitorLiveVideo.addEventListener('error', function (e) {
+          console.error('monitorLiveVideo error', e);
+          showToast('摄像头播放错误', 'error');
+        });
+      }
+
+      function getCameraUnavailableState(message) {
+        return [{
+          id: 'local-unavailable',
+          name: message || '未检测到摄像头',
+          status: 'offline',
+          deviceId: 'N/A',
+          mediaDeviceId: ''
+        }];
+      }
+
+      function stopLocalStream() {
+        if (localStream) {
+          localStream.getTracks().forEach(function (track) { track.stop(); });
+          localStream = null;
+        }
+        if (monitorLiveVideo) {
+          monitorLiveVideo.pause();
+          monitorLiveVideo.srcObject = null;
+          monitorLiveVideo.style.display = 'none';
+        }
+      }
+
+      function applyCameraSelection(options) {
+        var silent = options && options.silent;
+        var cam = currentCamera || cameras[0];
+        if (!cam) return;
+
+        if (cameraSelectedText) cameraSelectedText.textContent = cam.name;
+        if (cameraDeviceId) cameraDeviceId.textContent = cam.deviceId || 'default';
+        if (monitorPlaceholder) {
+          monitorPlaceholder.style.display = 'flex';
+          monitorPlaceholder.textContent = cam.status === 'online' ? '点击播放' : '设备离线';
+        }
+
+        if (cameraStatusDot) {
+          cameraStatusDot.className = 'monitor-status-dot';
+          if (cam.status === 'online') {
+            cameraStatusDot.classList.add('monitor-status-dot--online');
+            cameraStatusDot.textContent = '在线';
+          } else {
+            cameraStatusDot.classList.add('monitor-status-dot--offline');
+            cameraStatusDot.textContent = '离线';
+          }
+        }
+
+        renderCameraGrid();
+        renderCameraDropdown();
+
+        if (!silent) {
+          showToast('已切换到：' + cam.name);
+        }
+      }
+
+      function loadLocalCameras(preferredId) {
+        if (!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) {
+          cameras = getCameraUnavailableState('当前浏览器不支持摄像头');
+          currentCamera = cameras[0];
+          applyCameraSelection({ silent: true });
+          return Promise.resolve(cameras);
+        }
+
+        return navigator.mediaDevices.enumerateDevices().then(function (devices) {
+          var nextCameras = devices
+            .filter(function (device) { return device.kind === 'videoinput'; })
+            .map(function (device, index) {
+              var label = device.label || ('摄像头 ' + (index + 1));
+              var shortId = device.deviceId ? device.deviceId.slice(0, 8) + '...' : 'default';
+
+              return {
+                id: device.deviceId || ('camera-' + (index + 1)),
+                name: label,
+                status: 'online',
+                deviceId: shortId,
+                mediaDeviceId: device.deviceId || ''
+              };
+            });
+
+          if (nextCameras.length === 0) {
+            nextCameras = getCameraUnavailableState('未检测到摄像头');
+          }
+
+          cameras = nextCameras;
+          currentCamera = cameras.find(function (cam) {
+            return cam.id === preferredId;
+          }) || cameras[0];
+
+          applyCameraSelection({ silent: true });
+          return cameras;
+        }).catch(function () {
+          cameras = getCameraUnavailableState('摄像头列表读取失败');
+          currentCamera = cameras[0];
+          applyCameraSelection({ silent: true });
+          return cameras;
+        });
+      }
+
+      function getCameraErrorMessage(err) {
+        if (!err || !err.name) return '无法打开摄像头';
+        if (err.name === 'NotAllowedError') return '摄像头权限被拒绝';
+        if (err.name === 'NotFoundError') return '没有可用的摄像头';
+        if (err.name === 'NotReadableError') return '摄像头正被其他程序占用';
+        if (err.name === 'OverconstrainedError') return '当前摄像头不支持所选参数';
+        return '无法打开摄像头';
+      }
+
+      function setInferenceStatus(text) {
+        if (inferenceStatusText) {
+          inferenceStatusText.textContent = text;
+        }
+      }
+
+      function escapeHtml(text) {
+        return String(text == null ? '' : text)
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;')
+          .replace(/'/g, '&#39;');
+      }
+
+      function setStatCard(valueEl, subEl, value, subText) {
+        if (valueEl) valueEl.textContent = String(value);
+        if (subEl) subEl.textContent = subText;
+      }
+
+      function resetInferenceStats(message) {
+        var text = message || '等待识别结果';
+        setStatCard(handUpCountValue, handUpCountSub, 0, text);
+        setStatCard(sleepCountValue, sleepCountSub, 0, text);
+        setStatCard(phoneCountValue, phoneCountSub, 0, text);
+        setStatCard(abnormalCountValue, abnormalCountSub, 0, text);
+
+        if (inferenceStatsTableBody) {
+          inferenceStatsTableBody.innerHTML = '';
+        }
+        if (inferenceStatsEmpty) {
+          inferenceStatsEmpty.textContent = text;
+          inferenceStatsEmpty.style.display = 'block';
+        }
+      }
+
+      function renderInferenceStats(stats, selected) {
+        if (!stats) {
+          resetInferenceStats('未获取到统计结果');
+          return;
+        }
+
+        var displayCounts = stats.display_counts || {};
+        var totals = stats.tracked_totals || {};
+        var modeLabel = stats.display_mode_label || '检测数量';
+        var totalDetections = Number(stats.total_detections || 0);
+        var frameCount = Number(stats.frame_count || 0);
+        var mediaHint = selected && selected.type === 'video'
+          ? modeLabel + '，累计检测 '
+          : modeLabel + '，本次检测 ';
+
+        setStatCard(handUpCountValue, handUpCountSub, Number(displayCounts.hand_up || 0), mediaHint + Number(totals.hand_up || 0) + ' 次');
+        setStatCard(sleepCountValue, sleepCountSub, Number(displayCounts.sleep || 0), mediaHint + Number(totals.sleep || 0) + ' 次');
+        setStatCard(phoneCountValue, phoneCountSub, Number(displayCounts.phone || 0), mediaHint + Number(totals.phone || 0) + ' 次');
+        setStatCard(abnormalCountValue, abnormalCountSub, Number(displayCounts.abnormal || 0), mediaHint + Number(totals.abnormal || 0) + ' 次');
+
+        if (!inferenceStatsTableBody) return;
+
+        var counts = stats.counts || {};
+        var orderedKeys = ['hand_up', 'sleep', 'phone', 'abnormal'];
+        Object.keys(counts).forEach(function (key) {
+          if (orderedKeys.indexOf(key) === -1) {
+            orderedKeys.push(key);
+          }
+        });
+
+        var rows = [];
+        orderedKeys.forEach(function (key) {
+          var count = Number(counts[key] || 0);
+          var label = classLabelMap[key] || key;
+          var desc = selected && selected.type === 'video'
+            ? '累计检测 ' + count + ' 次，卡片显示峰值 ' + Number(displayCounts[key] || 0)
+            : '图片中检测到 ' + count + ' 个目标';
+          rows.push(
+            '<tr>'
+            + '<td>' + escapeHtml(label) + '</td>'
+            + '<td><strong>' + count + '</strong></td>'
+            + '<td>' + escapeHtml(desc) + '</td>'
+            + '</tr>'
+          );
+        });
+
+        rows.push(
+          '<tr>'
+          + '<td>总检测框</td>'
+          + '<td><strong>' + totalDetections + '</strong></td>'
+          + '<td>' + escapeHtml((selected ? selected.name : '当前素材') + '，共 ' + frameCount + ' 帧结果') + '</td>'
+          + '</tr>'
+        );
+
+        inferenceStatsTableBody.innerHTML = rows.join('');
+        if (inferenceStatsEmpty) {
+          inferenceStatsEmpty.style.display = 'none';
+        }
+      }
+
+      function clearMonitorMedia() {
+        stopLocalStream();
+        // clear overlay canvas
+        if (overlayCtx && monitorOverlayCanvas) {
+          try { overlayCtx.clearRect(0, 0, monitorOverlayCanvas.width, monitorOverlayCanvas.height); } catch (e) { }
+          monitorOverlayCanvas.style.display = 'none';
+        }
+        if (monitorImageResult) {
+          monitorImageResult.style.display = 'none';
+          monitorImageResult.removeAttribute('src');
+        }
+        if (monitorVideoResult) {
+          monitorVideoResult.pause();
+          monitorVideoResult.style.display = 'none';
+          monitorVideoResult.removeAttribute('src');
+          monitorVideoResult.load();
+        }
+        if (monitorPlaceholder) {
+          monitorPlaceholder.style.display = 'flex';
+        }
+        if (playPauseBtn) {
+          playPauseBtn.style.display = 'flex';
+        }
+      }
+
+      function showImageResult(base64Data) {
+        if (isPlaying) stopPlayback();
+        clearMonitorMedia();
+        if (monitorImageResult) {
+          monitorImageResult.src = 'data:image/png;base64,' + base64Data;
+          monitorImageResult.style.display = 'block';
+        }
+        if (monitorPlaceholder) {
+          monitorPlaceholder.style.display = 'none';
+        }
+        if (playPauseBtn) {
+          playPauseBtn.style.display = 'none';
+        }
+      }
+
+      function showVideoResult(videoUrl) {
+        if (isPlaying) stopPlayback();
+        clearMonitorMedia();
+        if (monitorVideoResult) {
+          monitorVideoResult.src = videoUrl;
+          monitorVideoResult.style.display = 'block';
+          monitorVideoResult.load();
+          monitorVideoResult.play().catch(function () { });
+        }
+        if (monitorPlaceholder) {
+          monitorPlaceholder.style.display = 'none';
+        }
+        if (playPauseBtn) {
+          playPauseBtn.style.display = 'none';
+        }
+      }
+
+      // API base: expose global window.API_BASE for other scripts
+      // Default to local backend port 7860 so opening file:// or a static server doesn't accidentally
+      // call the wrong host (can be overridden by setting window.API_BASE before this script runs).
+      window.API_BASE = window.API_BASE || 'http://127.0.0.1:7860';
+      var API_BASE = window.API_BASE;
+      try {
+        if (location.hostname === '127.0.0.1' || location.hostname === 'localhost') {
+          // if current port is not backend port, set backend base
+          if (location.port && location.port !== '7860') {
+            window.API_BASE = 'http://127.0.0.1:7860';
+            API_BASE = window.API_BASE;
+          }
+        }
+      } catch (e) { window.API_BASE = window.API_BASE || ''; API_BASE = window.API_BASE; }
+
+      function fetchJson(url, options) {
+        var full = (typeof url === 'string' && url.indexOf('/') === 0) ? (API_BASE + url) : url;
+        return fetch(full, options).then(function (res) {
+          return res.json().catch(function () { return {}; }).then(function (data) {
+            if (!res.ok) {
+              throw new Error(data && data.error ? data.error : (data || '请求失败'));
+            }
+            return data;
+          });
+        });
+      }
+
+      function setInferenceLoading(loading) {
+        inferenceRunning = loading;
+        if (runInferenceBtn) {
+          runInferenceBtn.disabled = loading;
+          runInferenceBtn.textContent = loading ? '识别中...' : '开始识别';
+        }
+        if (reloadFilesBtn) {
+          reloadFilesBtn.disabled = loading;
+        }
+        if (inferenceFileSelect) {
+          inferenceFileSelect.disabled = loading;
+        }
+      }
+
+      // 本地模拟推理（用于无后端时回退或快速测试）
+      function simulateInference(srcW, srcH) {
+        var n = Math.floor(Math.random() * 5);
+        var boxes = [];
+        var counts = {};
+        var display_counts = {};
+        var tracked_totals = {};
+        var classes = ['hand_up', 'sleep', 'phone', 'abnormal'];
+        for (var i = 0; i < n; i++) {
+          var cls = classes[Math.floor(Math.random() * classes.length)];
+          counts[cls] = (counts[cls] || 0) + 1;
+          display_counts[cls] = Math.max(display_counts[cls] || 0, counts[cls]);
+          tracked_totals[cls] = (tracked_totals[cls] || 0) + 1;
+          var x1 = Math.random() * 0.7;
+          var y1 = Math.random() * 0.7;
+          var x2 = x1 + 0.1 + Math.random() * 0.2;
+          var y2 = y1 + 0.1 + Math.random() * 0.2;
+          boxes.push({ xyxy: [x1, y1, Math.min(1, x2), Math.min(1, y2)], class_name: cls, conf: (0.5 + Math.random() * 0.5) });
+        }
+        var total_detections = n;
+        var s = {
+          counts: counts,
+          display_counts: display_counts,
+          tracked_totals: tracked_totals,
+          total_detections: total_detections,
+          frame_count: 1
+        };
+        return { boxes: boxes, stats: s };
+      }
+
+      function drawBoxesAndStats(result, dw, dh) {
+        if (!monitorOverlayCanvas || !overlayCtx) return;
+        try {
+          monitorOverlayCanvas.width = dw;
+          monitorOverlayCanvas.height = dh;
+          overlayCtx.clearRect(0, 0, dw, dh);
+          var classColors = { hand_up: '#1abc9c', sleep: '#3498db', phone: '#f39c12', abnormal: '#e74c3c' };
+          function roundRect(ctx, x, y, w, h, r) {
+            var radius = Math.max(0, r);
+            ctx.beginPath();
+            ctx.moveTo(x + radius, y);
+            ctx.arcTo(x + w, y, x + w, y + h, radius);
+            ctx.arcTo(x + w, y + h, x, y + h, radius);
+            ctx.arcTo(x, y + h, x, y, radius);
+            ctx.arcTo(x, y, x + w, y, radius);
+            ctx.closePath();
+          }
+          (result.boxes || []).forEach(function (b) {
+            var nx1 = Number(b.xyxy[0]);
+            var ny1 = Number(b.xyxy[1]);
+            var nx2 = Number(b.xyxy[2]);
+            var ny2 = Number(b.xyxy[3]);
+            var x1 = nx1 * dw;
+            var y1 = ny1 * dh;
+            var x2 = nx2 * dw;
+            var y2 = ny2 * dh;
+            var bw = Math.max(2, x2 - x1);
+            var bh = Math.max(2, y2 - y1);
+            var clsName = b.class_name || b.class_id || 'obj';
+            var conf = b.conf ? Number(b.conf) : null;
+            var color = classColors[clsName] || '#00ff88';
+            overlayCtx.lineWidth = Math.max(2, Math.round(3 * (dw / 640)));
+            overlayCtx.strokeStyle = color;
+            overlayCtx.fillStyle = 'rgba(0,0,0,0)';
+            roundRect(overlayCtx, x1, y1, bw, bh, Math.max(4, overlayCtx.lineWidth));
+            overlayCtx.stroke();
+            overlayCtx.font = Math.max(12, Math.round(14 * (dw / 640))) + 'px sans-serif';
+            overlayCtx.textBaseline = 'top';
+            var label = clsName + (conf !== null ? ' ' + conf.toFixed(2) : '');
+            var padding = Math.max(4, Math.round(6 * (dw / 640)));
+            var metrics = overlayCtx.measureText(label);
+            var textW = metrics.width;
+            var textH = Math.max(14, Math.round(16 * (dw / 640)));
+            var lx = x1;
+            var ly = Math.max(0, y1 - textH - padding);
+            overlayCtx.fillStyle = color;
+            roundRect(overlayCtx, lx - 1, ly - 1, textW + padding * 2 + 2, textH + padding + 2, 6);
+            overlayCtx.fill();
+            overlayCtx.fillStyle = '#ffffff';
+            overlayCtx.fillText(label, lx + padding, ly + Math.round(padding / 2));
+          });
+          monitorOverlayCanvas.style.display = 'block';
+        } catch (e) { console.error('drawBoxesAndStats error', e); }
+      }
+
+      /**
+       * 捕获当前 live video 的一帧并发送到后端 /predict-frame
+       */
+      function captureAndSendFrame() {
+        console.info('captureAndSendFrame called, isPlaying=', isPlaying, 'liveCaptureBusy=', liveCaptureBusy);
+        if (!monitorLiveVideo || monitorLiveVideo.style.display === 'none') return;
+        if (!isPlaying) return; // ensure camera is playing
+        if (liveCaptureBusy) return; // avoid overlapping requests
+        liveCaptureBusy = true;
+        try {
+          // downscale to reduce CPU / main-thread work
+          var srcW = monitorLiveVideo.videoWidth || 640;
+          var srcH = monitorLiveVideo.videoHeight || 480;
+          var maxW = 640;
+          var scale = Math.min(1, maxW / srcW);
+          var w = Math.max(1, Math.floor(srcW * scale));
+          var h = Math.max(1, Math.floor(srcH * scale));
+
+          var canvas = document.createElement('canvas');
+          canvas.width = w;
+          canvas.height = h;
+          var ctx = canvas.getContext('2d');
+          ctx.drawImage(monitorLiveVideo, 0, 0, w, h);
+
+          setInferenceStatus('实时识别中...');
+
+          // use toBlob (async) to avoid blocking main thread with toDataURL
+          canvas.toBlob(function (blob) {
+            if (!blob) {
+              liveCaptureBusy = false;
+              return;
+            }
+
+            var reader = new FileReader();
+            reader.onloadend = function () {
+              try {
+                var dataUrl = reader.result; // data:image/png;base64,...
+
+                // 如果启用模拟识别，直接生成假数据并绘制（无需后端）
+                try {
+                  if (mockInference) {
+                    var dw = monitorLiveVideo.clientWidth || monitorLiveVideo.videoWidth || w;
+                    var dh = monitorLiveVideo.clientHeight || monitorLiveVideo.videoHeight || h;
+                    var fake = simulateInference(w, h);
+                    drawBoxesAndStats(fake, dw, dh);
+                    renderInferenceStats(fake.stats, { type: 'image', name: 'mock' });
+                    setInferenceStatus('模拟识别：更新中');
+                    liveCaptureBusy = false;
+                    return;
+                  }
+                } catch (e) { console.error('mock flow error', e); }
+
+                // add timeout via AbortController to avoid hanging requests
+                try {
+                  var controller = new AbortController();
+                  var signal = controller.signal;
+                  var timeoutMs = 4000;
+                  var toId = setTimeout(function () { controller.abort(); }, timeoutMs);
+
+                  fetch((API_BASE || 'http://127.0.0.1:7860') + '/predict-frame', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ image: dataUrl }),
+                    signal: signal
+                  }).then(function (res) {
+                    clearTimeout(toId);
+                    if (!res.ok) return res.text().then(function (t) { throw new Error(t || res.statusText); });
+                    return res.json().catch(function () { return {}; });
+                  }).then(function (data) {
+                    liveCaptureErrorCount = 0;
+                    if (data && data.boxes && data.boxes.length) {
+                      try {
+                        if (monitorOverlayCanvas && overlayCtx) {
+                          var dw = monitorLiveVideo.clientWidth || monitorLiveVideo.videoWidth || w;
+                          var dh = monitorLiveVideo.clientHeight || monitorLiveVideo.videoHeight || h;
+                          monitorOverlayCanvas.width = dw;
+                          monitorOverlayCanvas.height = dh;
+                          overlayCtx.clearRect(0, 0, dw, dh);
+                          // 后端返回归一化坐标（0..1），直接乘以显示宽高
+                          // nicer drawing: rounded colored boxes + label background
+                          var classColors = {
+                            hand_up: '#1abc9c',
+                            sleep: '#3498db',
+                            phone: '#f39c12',
+                            abnormal: '#e74c3c'
+                          };
+                          function roundRect(ctx, x, y, w, h, r) {
+                            var radius = Math.max(0, r);
+                            ctx.beginPath();
+                            ctx.moveTo(x + radius, y);
+                            ctx.arcTo(x + w, y, x + w, y + h, radius);
+                            ctx.arcTo(x + w, y + h, x, y + h, radius);
+                            ctx.arcTo(x, y + h, x, y, radius);
+                            ctx.arcTo(x, y, x + w, y, radius);
+                            ctx.closePath();
+                          }
+
+                          data.boxes.forEach(function (b) {
+                            var nx1 = Number(b.xyxy[0]);
+                            var ny1 = Number(b.xyxy[1]);
+                            var nx2 = Number(b.xyxy[2]);
+                            var ny2 = Number(b.xyxy[3]);
+                            var x1 = nx1 * dw;
+                            var y1 = ny1 * dh;
+                            var x2 = nx2 * dw;
+                            var y2 = ny2 * dh;
+                            var bw = Math.max(2, x2 - x1);
+                            var bh = Math.max(2, y2 - y1);
+
+                            var clsName = 'obj';
+                            try {
+                              if (window.MODEL_CLASS_NAMES && typeof b.class_id !== 'undefined' && window.MODEL_CLASS_NAMES[b.class_id]) {
+                                clsName = String(window.MODEL_CLASS_NAMES[b.class_id]);
+                              } else {
+                                clsName = String(b.class_name || b.class_id || 'obj');
+                              }
+                            } catch (e) { clsName = String(b.class_name || b.class_id || 'obj'); }
+                            var conf = b.conf ? Number(b.conf) : null;
+                            var color = classColors[clsName] || '#00ff88';
+
+                            // box
+                            overlayCtx.lineWidth = Math.max(2, Math.round(3 * (dw / 640)));
+                            overlayCtx.strokeStyle = color;
+                            overlayCtx.fillStyle = 'rgba(0,0,0,0)';
+                            roundRect(overlayCtx, x1, y1, bw, bh, Math.max(4, overlayCtx.lineWidth));
+                            overlayCtx.stroke();
+
+                            // label
+                            overlayCtx.font = Math.max(12, Math.round(14 * (dw / 640))) + 'px sans-serif';
+                            overlayCtx.textBaseline = 'top';
+                            var label = clsName + (conf !== null ? ' ' + conf.toFixed(2) : '');
+                            var padding = Math.max(4, Math.round(6 * (dw / 640)));
+                            var metrics = overlayCtx.measureText(label);
+                            var textW = metrics.width;
+                            var textH = Math.max(14, Math.round(16 * (dw / 640)));
+                            var lx = x1;
+                            var ly = Math.max(0, y1 - textH - padding);
+
+                            // background for label
+                            overlayCtx.fillStyle = color;
+                            roundRect(overlayCtx, lx - 1, ly - 1, textW + padding * 2 + 2, textH + padding + 2, 6);
+                            overlayCtx.fill();
+
+                            // text
+                            overlayCtx.fillStyle = '#ffffff';
+                            overlayCtx.fillText(label, lx + padding, ly + Math.round(padding / 2));
+                          });
+                          monitorOverlayCanvas.style.display = 'block';
+                        }
+                      } catch (e) {
+                        console.error('box draw error', e);
+                      }
+                    }
+                    if (data && data.stats) {
+                      renderInferenceStats(data.stats, { type: 'image', name: 'webcam' });
+                      setInferenceStatus('实时识别：更新中');
+                      // 如果启用自动标记，且检测到目标，则触发标记（节流）
+                      try {
+                        if (autoMarkCheckbox && autoMarkCheckbox.checked && data.stats && Number((data.stats || {}).total_detections || 0) > 0) {
+                          var now = Date.now();
+                          window._lastAutoMarkTs = window._lastAutoMarkTs || 0;
+                          if (now - window._lastAutoMarkTs > 30000) { // 30s 冷却
+                            window._lastAutoMarkTs = now;
+                            markAttendance();
+                          }
+                        }
+                      } catch (e) { }
+                    }
+                    // ensure video continues playing (some browsers may pause streams)
+                    try {
+                      if (monitorLiveVideo && monitorLiveVideo.paused) {
+                        monitorLiveVideo.play().catch(function (e) { console.warn('resume play failed', e); });
+                      }
+                    } catch (e) { }
+                  }).catch(function (err) {
+                    console.error('predict-frame error', err);
+                    liveCaptureErrorCount++;
+                    setInferenceStatus('实时识别出错');
+                    // 尝试本地回退（仅在未启用模拟模式时）
+                    try {
+                      if (!mockInference) {
+                        var dw = monitorLiveVideo.clientWidth || monitorLiveVideo.videoWidth || w;
+                        var dh = monitorLiveVideo.clientHeight || monitorLiveVideo.videoHeight || h;
+                        var fake = simulateInference(w, h);
+                        drawBoxesAndStats(fake, dw, dh);
+                        renderInferenceStats(fake.stats, { type: 'image', name: 'fallback' });
+                        setInferenceStatus('本地回退识别完成');
+                      }
+                    } catch (e) { console.error('fallback simulate error', e); }
+                    if (liveCaptureErrorCount >= 5) {
+                      showToast('实时识别连续错误，已停止', 'error');
+                      stopLiveInference();
+                    }
+                  }).finally(function () {
+                    liveCaptureBusy = false;
+                  });
+                } catch (ex) {
+                  console.error('fetch setup error', ex);
+                  liveCaptureBusy = false;
+                }
+              } catch (e) {
+                console.error('reader onload error', e);
+                liveCaptureBusy = false;
+              }
+            };
+            reader.onerror = function (e) {
+              console.error('file reader error', e);
+              liveCaptureBusy = false;
+            };
+            reader.readAsDataURL(blob);
+          }, 'image/png');
+
+        } catch (e) {
+          console.error('capture error', e);
+          liveCaptureBusy = false;
+        }
+      }
+
+      /**
+       * Capture current live frame and send to /capture (save + infer)
+       */
+      function captureAndSave() {
+        if (!monitorLiveVideo || monitorLiveVideo.style.display === 'none') {
+          showToast('请先打开摄像头以拍照识别', 'error');
+          return;
+        }
+        try {
+          var w = monitorLiveVideo.videoWidth || 640;
+          var h = monitorLiveVideo.videoHeight || 480;
+          var canvas = document.createElement('canvas');
+          canvas.width = w;
+          canvas.height = h;
+          var ctx = canvas.getContext('2d');
+          ctx.drawImage(monitorLiveVideo, 0, 0, w, h);
+          var dataUrl = canvas.toDataURL('image/png');
+
+          setInferenceStatus('拍照识别中...');
+
+          // send as text/plain to avoid CORS preflight
+          fetch(API_BASE + '/capture', {
+            method: 'POST',
+            headers: { 'Content-Type': 'text/plain' },
+            body: dataUrl
+          }).then(function (res) {
+            if (!res.ok) {
+              return res.text().then(function (txt) { throw new Error(txt || res.statusText); });
+            }
+            var ct = (res.headers.get('content-type') || '');
+            if (ct.indexOf('application/json') === -1) {
+              return res.text().then(function (txt) {
+                try { return JSON.parse(txt); } catch (e) { throw new Error(txt || '非 JSON 响应'); }
+              });
+            }
+            return res.json();
+          }).then(function (data) {
+            if (!data || !data.ok) {
+              throw new Error(data && data.error ? data.error : '后端返回错误');
+            }
+            // show annotated image returned as URL
+            if (data.annotated) {
+              if (monitorImageResult) {
+                monitorImageResult.src = data.annotated;
+                monitorImageResult.style.display = 'block';
+              }
+            }
+            if (data.stats) {
+              renderInferenceStats(data.stats, { type: 'image', name: data.original || 'capture' });
+            }
+            setInferenceStatus('拍照识别完成');
+            showToast('拍照识别完成', 'success');
+            // return data for caller
+            if (typeof captureAndSave._callback === 'function') {
+              try { captureAndSave._callback(null, data); } catch (e) { }
+            }
+          }).catch(function (err) {
+            console.error('capture error', err);
+            setInferenceStatus('拍照识别失败');
+            showToast('拍照识别失败：' + (err.message || err), 'error');
+            if (typeof captureAndSave._callback === 'function') {
+              try { captureAndSave._callback(err); } catch (e) { }
+            }
+          });
+        } catch (e) {
+          console.error('capture error', e);
+          showToast('拍照识别失败', 'error');
+        }
+      }
+
+      // 标记考勤：调用 /capture 存图并尝试向 /attendance/mark 发送记录（如果后端支持）
+      function markAttendance() {
+        setInferenceStatus('标记考勤：正在拍照...');
+        // use capture endpoint but pass callback
+        captureAndSave._callback = function (err, data) {
+          captureAndSave._callback = null;
+          if (err || !data) {
+            setInferenceStatus('标记失败');
+            showToast('标记考勤失败：拍照或识别失败', 'error');
+            return;
+          }
+          // try to POST to /attendance/mark (optional endpoint)
+          var payload = { original: data.original || null, annotated: data.annotated || null, stats: data.stats || null };
+          fetch((API_BASE || 'http://127.0.0.1:7860') + '/attendance/mark', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+          }).then(function (res) {
+            if (!res.ok) return res.text().then(function (t) { throw new Error(t || res.statusText); });
+            return res.json().catch(function () { return {}; });
+          }).then(function (resp) {
+            showToast('考勤标记成功', 'success');
+            setInferenceStatus('标记完成');
+          }).catch(function (e) {
+            // endpoint may not exist; fallback: just notify user and keep capture saved
+            console.warn('/attendance/mark failed', e);
+            showToast('拍照已保存（后端未绑定标记接口）', 'info');
+            setInferenceStatus('拍照已保存');
+          });
+        };
+        captureAndSave();
+      }
+
+      function startLiveInference() {
+        if (liveInferenceActive) return;
+        liveInferenceActive = true;
+        console.info('startLiveInference');
+        if (liveInferenceBtn) liveInferenceBtn.textContent = '停止识别';
+
+        // chain-based scheduler: after each capture completes, schedule next via setTimeout
+        function scheduleNext(delay) {
+          try {
+            if (!liveInferenceActive) return;
+            // clear previous
+            if (liveInferenceTimeoutId) { clearTimeout(liveInferenceTimeoutId); liveInferenceTimeoutId = null; }
+            liveInferenceTimeoutId = setTimeout(function () {
+              // only schedule next after capture completes (captureAndSendFrame manages liveCaptureBusy)
+              try { captureAndSendFrame(); } catch (e) { console.error('captureAndSendFrame threw', e); }
+              // schedule subsequent run
+              scheduleNext(liveInferenceIntervalMs);
+            }, typeof delay === 'number' ? delay : liveInferenceIntervalMs);
+          } catch (e) { console.error('scheduleNext error', e); }
+        }
+
+        // ensure camera is playing; if not, start it first
+        if (!isPlaying) {
+          startPlayback();
+          // wait for the video to actually start playing before capturing
+          var onPlaying = function () {
+            try { captureAndSendFrame(); } catch (e) { console.error('initial capture failed', e); }
+            scheduleNext(liveInferenceIntervalMs);
+            try { monitorLiveVideo.removeEventListener('playing', onPlaying); } catch (e) { }
+          };
+          try { monitorLiveVideo.addEventListener('playing', onPlaying); } catch (e) { console.error('addEventListener playing failed', e); }
+          // fallback: if playing event doesn't fire within 2s, attempt initial capture anyway
+          setTimeout(function () {
+            try {
+              if (!isPlaying) {
+                try { captureAndSendFrame(); } catch (e) { console.error('fallback initial capture failed', e); }
+                scheduleNext(liveInferenceIntervalMs);
+                try { monitorLiveVideo.removeEventListener('playing', onPlaying); } catch (e) { }
+              }
+            } catch (e) { console.error('initial capture fallback error', e); }
+          }, 2000);
+        } else {
+          try { captureAndSendFrame(); } catch (e) { console.error('initial capture failed', e); }
+          scheduleNext(liveInferenceIntervalMs);
+        }
+        showToast('已开启实时识别', 'success');
+      }
+
+      function stopLiveInference() {
+        if (!liveInferenceActive) return;
+        console.info('stopLiveInference');
+        liveInferenceActive = false;
+        if (liveInferenceBtn) liveInferenceBtn.innerHTML = '&#9881; 实时识别';
+        try { if (liveInferenceTimeoutId) { clearTimeout(liveInferenceTimeoutId); liveInferenceTimeoutId = null; } } catch (e) {}
+        try { if (liveInferenceInterval) { clearTimeout(liveInferenceInterval); liveInferenceInterval = null; } } catch (e) {}
+        setInferenceStatus('未执行');
+        showToast('已停止实时识别');
+      }
+
+      var _lastToggleLiveTs = 0;
+      function toggleLiveInference() {
+        var now = Date.now();
+        if (now - _lastToggleLiveTs < 300) { console.warn('toggleLiveInference ignored (debounce)'); return; }
+        _lastToggleLiveTs = now;
+        console.info('toggleLiveInference, active=', liveInferenceActive);
+        if (liveInferenceActive) stopLiveInference(); else startLiveInference();
+      }
+
+      function renderInferenceFiles() {
+        if (!inferenceFileSelect) return;
+
+        if (inferenceFiles.length === 0) {
+          inferenceFileSelect.innerHTML = '<option value="">TRY/origin 中暂无图片或视频</option>';
+          return;
+        }
+
+        var html = '<option value="">请选择一个素材</option>';
+        inferenceFiles.forEach(function (item) {
+          var label = item.type === 'image' ? '[图片] ' : '[视频] ';
+          html += '<option value="' + item.name + '">' + label + item.name + '</option>';
+        });
+        inferenceFileSelect.innerHTML = html;
+      }
+
+      function loadModelInfo() {
+        return fetchJson('/model-info').then(function (data) {
+          if (modelInfoText) {
+            modelInfoText.textContent = data.model_name || data.model_path || '未识别';
+          }
+          try {
+            // store model class names mapping (id -> name) for frontend labels
+            window.MODEL_CLASS_NAMES = {};
+            var classes = data.model_classes || null;
+            if (classes) {
+              if (Array.isArray(classes)) {
+                classes.forEach(function (n, i) { window.MODEL_CLASS_NAMES[i] = String(n); });
+              } else if (typeof classes === 'object') {
+                Object.keys(classes).forEach(function (k) { window.MODEL_CLASS_NAMES[parseInt(k, 10)] = String(classes[k]); });
+              }
+            }
+          } catch (e) { window.MODEL_CLASS_NAMES = {}; }
+        }).catch(function () {
+          if (modelInfoText) {
+            modelInfoText.textContent = '获取失败';
+          }
+          window.MODEL_CLASS_NAMES = {};
+        });
+      }
+
+      function loadInferenceFiles() {
+        if (inferenceFileSelect) {
+          inferenceFileSelect.innerHTML = '<option value="">正在加载素材列表...</option>';
+        }
+
+        return fetchJson('/list').then(function (data) {
+          var images = (data.images || []).map(function (name) {
+            return { name: name, type: 'image' };
+          });
+          var videos = (data.videos || []).map(function (name) {
+            return { name: name, type: 'video' };
+          });
+          inferenceFiles = images.concat(videos);
+          renderInferenceFiles();
+          setInferenceStatus(inferenceFiles.length ? '素材已加载' : '暂无可识别素材');
+        }).catch(function (err) {
+          inferenceFiles = [];
+          renderInferenceFiles();
+          setInferenceStatus('素材加载失败');
+          showToast('素材列表加载失败：' + err.message, 'error');
+        });
+      }
+
+      function runInference() {
+        if (inferenceRunning) return;
+        if (!inferenceFileSelect || !inferenceFileSelect.value) {
+          showToast('请先选择待识别素材', 'error');
+          return;
+        }
+
+        var selected = inferenceFiles.find(function (item) {
+          return item.name === inferenceFileSelect.value;
+        });
+
+        if (!selected) {
+          showToast('未找到对应素材，请先刷新素材列表', 'error');
+          return;
+        }
+
+        if (isPlaying) stopPlayback();
+        timerSeconds = 0;
+        updateTimestamp();
+        clearMonitorMedia();
+        monitorVideo.classList.add('monitor-video--loading');
+        if (monitorPlaceholder) {
+          monitorPlaceholder.style.display = 'flex';
+          monitorPlaceholder.textContent = '模型识别中...';
+        }
+
+        setInferenceLoading(true);
+        setInferenceStatus('正在识别 ' + selected.name);
+        resetInferenceStats('识别中，等待模型返回结果...');
+
+        fetchJson('/predict', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            file: selected.name,
+            type: selected.type
+          })
+        }).then(function (data) {
+          monitorVideo.classList.remove('monitor-video--loading');
+
+          if (selected.type === 'image' && data.image_base64) {
+            showImageResult(data.image_base64);
+          } else if (selected.type === 'video' && data.video_url) {
+            showVideoResult(data.video_url);
+          } else {
+            throw new Error('后端未返回可显示的识别结果');
+          }
+
+          renderInferenceStats(data.stats, selected);
+          setInferenceStatus('已完成：' + selected.name + '，举手人数 ' + Number(((data.stats || {}).display_counts || {}).hand_up || 0));
+          showToast('识别完成：' + selected.name, 'success');
+        }).catch(function (err) {
+          monitorVideo.classList.remove('monitor-video--loading');
+          clearMonitorMedia();
+          if (monitorPlaceholder) {
+            monitorPlaceholder.textContent = '识别失败';
+          }
+          resetInferenceStats('识别失败，暂无统计结果');
+          setInferenceStatus('识别失败');
+          showToast('识别失败：' + err.message, 'error');
+        }).finally(function () {
+          setInferenceLoading(false);
+        });
+      }
+
+      /**
+       * 格式化秒数为 HH:MM:SS
+       */
+      function formatTime(seconds) {
+        var h = Math.floor(seconds / 3600);
+        var m = Math.floor((seconds % 3600) / 60);
+        var s = seconds % 60;
+        return [h, m, s].map(function (v) { return (v < 10 ? '0' : '') + v; }).join(':');
+      }
+
+      /**
+       * 更新时间戳显示
+       */
+      function updateTimestamp() {
+        if (monitorTimestamp) {
+          monitorTimestamp.textContent = formatTime(timerSeconds);
+        }
+      }
+
+      /**
+       * 打开本地摄像头并开始预览
+       */
+      function startPlayback() {
+        if (!supportsLocalCamera()) {
+          showToast('当前页面无法访问摄像头，请使用 localhost 打开页面', 'error');
+          return;
+        }
+
+        if (currentCamera.status === 'offline') {
+          showToast('该摄像头已离线，无法播放', 'error');
+          return;
+        }
+
+        clearMonitorMedia();
+
+        monitorVideo.classList.add('monitor-video--loading');
+        if (monitorPlaceholder) {
+          monitorPlaceholder.style.display = 'flex';
+          monitorPlaceholder.textContent = '正在连接摄像头...';
+        }
+
+        var videoConstraints = {
+          width: { ideal: 1920 },
+          height: { ideal: 1080 }
+        };
+        if (currentCamera.mediaDeviceId) {
+          videoConstraints.deviceId = { exact: currentCamera.mediaDeviceId };
+        }
+
+        navigator.mediaDevices.getUserMedia({
+          video: videoConstraints,
+          audio: false
+        }).then(function (stream) {
+          localStream = stream;
+          monitorVideo.classList.remove('monitor-video--loading');
+          monitorVideo.classList.add('monitor-video--playing');
+          isPlaying = true;
+          playPauseBtn.innerHTML = '&#9646;&#9646;';
+          if (monitorLiveVideo) {
+            monitorLiveVideo.srcObject = stream;
+            monitorLiveVideo.style.display = 'block';
+            monitorLiveVideo.play().catch(function () { });
+            // initialize overlay canvas to match video display size
+            if (monitorOverlayCanvas && overlayCtx) {
+              // set to current display size
+              function resizeOverlay() {
+                try {
+                  var w = monitorLiveVideo.clientWidth || monitorLiveVideo.videoWidth || 640;
+                  var h = monitorLiveVideo.clientHeight || monitorLiveVideo.videoHeight || 480;
+                  monitorOverlayCanvas.width = w;
+                  monitorOverlayCanvas.height = h;
+                  monitorOverlayCanvas.style.display = 'block';
+                } catch (e) { }
+              }
+              resizeOverlay();
+              // also update on window resize
+              window.addEventListener('resize', resizeOverlay);
+            }
+          }
+          if (monitorPlaceholder) {
+            monitorPlaceholder.style.display = 'none';
+          }
+          updateTimestamp();
+
+          timerInterval = setInterval(function () {
+            timerSeconds++;
+            updateTimestamp();
+          }, 1000);
+
+          loadLocalCameras(currentCamera.id);
+          showToast('摄像头已连接：' + currentCamera.name, 'success');
+        }).catch(function (err) {
+          monitorVideo.classList.remove('monitor-video--loading');
+          clearMonitorMedia();
+          if (monitorPlaceholder) {
+            monitorPlaceholder.style.display = 'flex';
+            monitorPlaceholder.textContent = '点击播放';
+          }
+          showToast(getCameraErrorMessage(err), 'error');
+        });
+      }
+
+      /**
+       * 停止视频播放
+       */
+      function stopPlayback() {
+        stopLocalStream();
+        monitorVideo.classList.remove('monitor-video--playing');
+        isPlaying = false;
+        playPauseBtn.innerHTML = '&#9654;';
+        if (monitorPlaceholder) {
+          monitorPlaceholder.style.display = 'flex';
+          monitorPlaceholder.textContent = '已暂停';
+        }
+        if (timerInterval) {
+          clearInterval(timerInterval);
+          timerInterval = null;
+        }
+        // clear overlay when stopping
+        if (overlayCtx && monitorOverlayCanvas) {
+          try { overlayCtx.clearRect(0, 0, monitorOverlayCanvas.width, monitorOverlayCanvas.height); } catch (e) { }
+          monitorOverlayCanvas.style.display = 'none';
+        }
+      }
+
+      /**
+       * 切换播放/暂停
+       */
+      function togglePlayback() {
+        if (isPlaying) {
+          stopPlayback();
+        } else {
+          startPlayback();
+        }
+      }
+
+      /**
+       * 刷新视频流
+       */
+      function refreshStream() {
+        if (isPlaying) stopPlayback();
+        timerSeconds = 0;
+        updateTimestamp();
+        clearMonitorMedia();
+        if (monitorPlaceholder) {
+          monitorPlaceholder.style.display = 'flex';
+          monitorPlaceholder.textContent = '点击播放';
+        }
+        showToast('摄像头已刷新');
+        setTimeout(function () { startPlayback(); }, 500);
+      }
+
+      /**
+       * 切换全屏
+       */
+      function toggleFullscreen() {
+        if (!document.fullscreenElement) {
+          monitorVideo.requestFullscreen().then(function () {
+            isFullscreen = true;
+            fullscreenBtn.innerHTML = '&#128472; 退出全屏';
+          }).catch(function () {
+            showToast('全屏失败，请检查浏览器权限', 'error');
+          });
+        } else {
+          document.exitFullscreen().then(function () {
+            isFullscreen = false;
+            fullscreenBtn.innerHTML = '&#9974; 全屏';
+          }).catch(function () { });
+        }
+      }
+
+      // 监听全屏变化事件（用户按 ESC 退出时同步按钮状态）
+      document.addEventListener('fullscreenchange', function () {
+        if (!document.fullscreenElement) {
+          isFullscreen = false;
+          fullscreenBtn.innerHTML = '&#9974; 全屏';
+        }
+      });
+
+      /**
+       * 切换到指定摄像头
+       */
+      function selectCamera(cameraId, options) {
+        var cam = cameras.find(function (c) { return c.id === cameraId; });
+        if (!cam) return;
+
+        // 如果正在播放，先停止
+        if (isPlaying) stopPlayback();
+        timerSeconds = 0;
+        updateTimestamp();
+
+        currentCamera = cam;
+
+        clearMonitorMedia();
+        applyCameraSelection(options);
+      }
+
+      /**
+       * 渲染 PC 端摄像头下拉菜单
+       */
+      function renderCameraDropdown() {
+        if (!cameraMenu) return;
+        var html = '';
+        cameras.forEach(function (cam) {
+          var sel = cam.id === currentCamera.id ? ' dropdown__option--selected' : '';
+          var dot = cam.status === 'online'
+            ? '<span style="color:var(--color-success);margin-right:4px;">&#9679;</span>'
+            : '<span style="color:var(--color-danger);margin-right:4px;">&#9679;</span>';
+          html += '<div class="dropdown__option' + sel + '" data-value="' + cam.id + '">'
+            + dot + cam.name + '</div>';
+        });
+        cameraMenu.innerHTML = html;
+
+        // 重新初始化下拉框
+        initDropdown({
+          el: cameraDropdown,
+          onSelect: function (val) { selectCamera(val); }
+        });
+      }
+
+      /**
+       * 渲染底部的摄像头缩略图网格
+       */
+      function renderCameraGrid() {
+        if (!cameraGrid) return;
+        var html = '';
+        cameras.forEach(function (cam) {
+          var isActive = cam.id === currentCamera.id;
+          var borderColor = isActive ? 'var(--color-primary)' : 'var(--color-border)';
+          var bgColor = isActive ? 'var(--color-primary-bg)' : 'var(--color-white)';
+          var dotColor = cam.status === 'online' ? 'var(--color-success)' : 'var(--color-danger)';
+          var statusText = cam.status === 'online' ? '在线' : '离线';
+
+          html += '<div class="camera-thumb" data-cam-id="' + cam.id + '" style="'
+            + 'background:' + bgColor + ';'
+            + 'border:1px solid ' + borderColor + ';'
+            + 'border-radius:var(--radius-lg);'
+            + 'padding:16px;'
+            + 'cursor:pointer;'
+            + 'transition:all var(--transition);'
+            + 'box-shadow:var(--shadow-sm);'
+            + '">'
+            + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">'
+            + '<span style="font-weight:600;font-size:13px;color:var(--color-text);">' + cam.name + '</span>'
+            + '<span style="font-size:11px;color:' + dotColor + ';">&#9679; ' + statusText + '</span>'
+            + '</div>'
+            + '<div style="font-size:12px;color:var(--color-text-light);">' + cam.deviceId + '</div>'
+            + '</div>';
+        });
+        cameraGrid.innerHTML = html;
+
+        // 绑定缩略图点击切换
+        cameraGrid.querySelectorAll('.camera-thumb').forEach(function (thumb) {
+          thumb.addEventListener('click', function () {
+            selectCamera(this.getAttribute('data-cam-id'));
+          });
+        });
+      }
+
+      /* ---- 5b. 移动端摄像头选择弹窗 ---- */
+      var cameraModal = document.getElementById('cameraModal');
+      var cameraModalMask = document.getElementById('cameraModalMask');
+      var cameraModalCont = document.getElementById('cameraModalContent');
+      var cameraMobileBtn = document.getElementById('cameraMobileBtn');
+      var cameraMobileLbl = document.getElementById('cameraMobileLabel');
+
+      function isMobile() { return window.innerWidth <= 768; }
+
+      function initMobileDropdown() {
+        if (isMobile()) {
+          cameraMobileBtn.style.display = 'inline-flex';
+          cameraDropdown.style.display = 'none';
+        } else {
+          cameraMobileBtn.style.display = 'none';
+          cameraDropdown.style.display = 'inline-block';
+        }
+      }
+
+      function openCameraModal() {
+        if (!cameraModalCont) return;
+        var html = '<div class="dropdown-modal__title">选择摄像头</div>';
+        cameras.forEach(function (cam) {
+          var sel = cam.id === currentCamera.id ? ' dropdown-modal__option--selected' : '';
+          var dot = cam.status === 'online'
+            ? '<span style="color:var(--color-success);margin-right:4px;">&#9679;</span>'
+            : '<span style="color:var(--color-danger);margin-right:4px;">&#9679;</span>';
+          html += '<div class="dropdown-modal__option' + sel + '" data-cam-id="' + cam.id + '">'
+            + dot + cam.name + ' (' + (cam.status === 'online' ? '在线' : '离线') + ')</div>';
+        });
+        cameraModalCont.innerHTML = html;
+        cameraModal.classList.add('dropdown-modal--visible');
+
+        // 绑定选项点击
+        cameraModalCont.querySelectorAll('.dropdown-modal__option').forEach(function (opt) {
+          opt.addEventListener('click', function () {
+            selectCamera(this.getAttribute('data-cam-id'));
+            closeCameraModal();
+          });
+        });
+      }
+
+      function closeCameraModal() {
+        cameraModal.classList.remove('dropdown-modal--visible');
+      }
+
+      if (cameraMobileBtn) {
+        cameraMobileBtn.addEventListener('click', openCameraModal);
+      }
+      if (cameraModalMask) {
+        cameraModalMask.addEventListener('click', closeCameraModal);
+      }
+
+      // ---- 绑定监控各按钮事件 ----
+      if (playPauseBtn) playPauseBtn.addEventListener('click', togglePlayback);
+      var captureBtn = document.getElementById('captureBtn');
+      if (captureBtn) captureBtn.addEventListener('click', captureAndSave);
+      var markAttendanceBtn = document.getElementById('markAttendanceBtn');
+      var autoMarkCheckbox = document.getElementById('autoMarkCheckbox');
+      if (markAttendanceBtn) markAttendanceBtn.addEventListener('click', function () { markAttendance(); });
+      if (monitorVideo) monitorVideo.addEventListener('click', function (e) {
+        // 点击视频区域（非按钮区域）也切换播放
+        if (e.target === monitorVideo || e.target.closest('.monitor-video__placeholder')) {
+          togglePlayback();
+        }
+      });
+      if (refreshBtn) refreshBtn.addEventListener('click', refreshStream);
+      if (fullscreenBtn) fullscreenBtn.addEventListener('click', toggleFullscreen);
+      if (liveInferenceBtn) liveInferenceBtn.onclick = toggleLiveInference;
+      if (replayBtn) replayBtn.addEventListener('click', function () {
+        showToast('录像回放功能 — 可对接录像存储接口');
+      });
+      if (reloadFilesBtn) reloadFilesBtn.addEventListener('click', loadInferenceFiles);
+      if (runInferenceBtn) runInferenceBtn.addEventListener('click', runInference);
+
+      // ---- 初始渲染 ----
+      // 绑定实时识别控件（间隔与模拟开关）
+      try {
+        liveIntervalInput = document.getElementById('liveIntervalInput');
+        mockInferenceCheckbox = document.getElementById('mockInferenceCheckbox');
+        if (liveIntervalInput) {
+          liveIntervalInput.addEventListener('change', function () {
+            var v = Number(this.value) || 2000;
+            liveInferenceIntervalMs = Math.max(200, v);
+            showToast('实时识别间隔已设置为 ' + liveInferenceIntervalMs + ' ms');
+          });
+        }
+        if (mockInferenceCheckbox) {
+          mockInferenceCheckbox.addEventListener('change', function () {
+            mockInference = this.checked;
+            showToast('模拟识别 ' + (mockInference ? '已启用' : '已关闭'));
+          });
+        }
+      } catch (e) { console.error('bind live controls failed', e); }
+
+      renderCameraDropdown();
+      renderCameraGrid();
+      initMobileDropdown();
+      updateTimestamp();
+      resetInferenceStats();
+      loadModelInfo();
+      loadInferenceFiles();
+
+      // 初始状态显示
+      (function initCameraUI() {
+        applyCameraSelection({ silent: true });
+      })();
+
+      loadLocalCameras(currentCamera.id);
+
+      if (navigator.mediaDevices && typeof navigator.mediaDevices.addEventListener === 'function') {
+        navigator.mediaDevices.addEventListener('devicechange', function () {
+          loadLocalCameras(currentCamera && currentCamera.id);
+        });
+      }
+
+      /* ==========================================================
+         6. ★ NEW: 考勤记录表格 — 数据渲染与交互
+         ========================================================== */
+
+      // ---- 6a. Mock 数据 ----
+      var attendanceData = [
+        { id: '20240001', name: '张明远', className: '高三(1)班', status: 'normal', time: '2026-05-25 07:42:15' },
+        { id: '20240002', name: '李思雨', className: '高三(1)班', status: 'normal', time: '2026-05-25 07:45:30' },
+        { id: '20240003', name: '王浩然', className: '高三(2)班', status: 'late', time: '2026-05-25 08:12:08' },
+        { id: '20240004', name: '陈雨晴', className: '高三(2)班', status: 'normal', time: '2026-05-25 07:38:50' },
+        { id: '20240005', name: '刘子涵', className: '高三(3)班', status: 'absent', time: '--' },
+        { id: '20240006', name: '赵文博', className: '高三(3)班', status: 'normal', time: '2026-05-25 07:40:22' },
+        { id: '20240007', name: '孙晓萌', className: '高三(1)班', status: 'late', time: '2026-05-25 08:05:41' },
+        { id: '20240008', name: '周逸飞', className: '高三(4)班', status: 'normal', time: '2026-05-25 07:44:10' },
+        { id: '20240009', name: '吴佳琪', className: '高三(4)班', status: 'normal', time: '2026-05-25 07:39:55' },
+        { id: '20240010', name: '郑浩宇', className: '高三(2)班', status: 'absent', time: '--' }
+      ];
+
+      // 状态 → 标签映射
+      var statusMap = {
+        normal: { cls: 'tag--success', text: '正常' },
+        late: { cls: 'tag--warning', text: '迟到' },
+        absent: { cls: 'tag--danger', text: '缺席' }
+      };
+
+      var currentClassFilter = 'all'; // 当前班级筛选
+      var attendanceTbody = document.getElementById('attendanceTableBody');
+      var attendanceEmpty = document.getElementById('attendanceEmpty');
+      var attendancePagin = document.getElementById('attendancePagination');
+      var classFilterDropdown = document.getElementById('classFilterDropdown');
+      var classFilterTrigger = document.getElementById('classFilterTrigger');
+      var classFilterMenu = document.getElementById('classFilterMenu');
+      var classFilterText = document.getElementById('classFilterText');
+
+      /**
+       * 根据筛选条件渲染考勤表格
+       */
+      function renderAttendanceTable() {
+        // 筛选
+        var filtered = attendanceData;
+        if (currentClassFilter !== 'all') {
+          filtered = attendanceData.filter(function (row) {
+            return row.className === currentClassFilter;
+          });
+        }
+
+        // 空状态
+        if (filtered.length === 0) {
+          if (attendanceTbody) attendanceTbody.innerHTML = '';
+          if (attendanceEmpty) attendanceEmpty.style.display = 'block';
+          if (attendancePagin) attendancePagin.textContent = '';
+          return;
+        }
+
+        if (attendanceEmpty) attendanceEmpty.style.display = 'none';
+
+        // 渲染行
+        var html = '';
+        filtered.forEach(function (row) {
+          var s = statusMap[row.status] || statusMap.normal;
+          html += '<tr data-student-id="' + row.id + '">'
+            + '<td>' + row.id + '</td>'
+            + '<td><strong>' + row.name + '</strong></td>'
+            + '<td>' + row.className + '</td>'
+            + '<td><span class="tag ' + s.cls + '">' + s.text + '</span></td>'
+            + '<td style="font-family:\'Courier New\',monospace;font-size:12px;">' + row.time + '</td>'
+            + '<td>'
+            + '<button class="btn btn--outline btn--sm btn-detail" data-id="' + row.id + '">查看详情</button> '
+            + '<button class="btn btn--outline btn--sm btn-export-single" data-id="' + row.id + '">导出</button>'
+            + '</td>'
+            + '</tr>';
+        });
+
+        if (attendanceTbody) attendanceTbody.innerHTML = html;
+
+        // 更新分页文本
+        if (attendancePagin) {
+          attendancePagin.textContent = '共 ' + filtered.length + ' 条记录';
+        }
+
+        // 绑定操作按钮事件
+        bindAttendanceActions();
+      }
+
+      /**
+       * 绑定查看详情 / 导出按钮
+       */
+      function bindAttendanceActions() {
+        // 查看详情
+        document.querySelectorAll('.btn-detail').forEach(function (btn) {
+          btn.addEventListener('click', function (e) {
+            e.stopPropagation();
+            var sid = this.getAttribute('data-id');
+            var row = attendanceData.find(function (r) { return r.id === sid; });
+            if (row) {
+              showToast('查看详情：' + row.name + ' (' + row.id + ') — 可对接详情弹窗');
+            }
+          });
+        });
+
+        // 导出单条
+        document.querySelectorAll('.btn-export-single').forEach(function (btn) {
+          btn.addEventListener('click', function (e) {
+            e.stopPropagation();
+            var sid = this.getAttribute('data-id');
+            var row = attendanceData.find(function (r) { return r.id === sid; });
+            if (row) {
+              showToast('导出成功：' + row.name + ' 的考勤记录', 'success');
+            }
+          });
+        });
+      }
+
+      /**
+       * 初始化班级筛选下拉框
+       */
+      function initClassFilter() {
+        // 提取不重复班级
+        var classSet = {};
+        attendanceData.forEach(function (r) { classSet[r.className] = true; });
+        var classes = Object.keys(classSet).sort();
+
+        var html = '<div class="dropdown__option dropdown__option--selected" data-value="all">全部班级</div>';
+        classes.forEach(function (c) {
+          html += '<div class="dropdown__option" data-value="' + c + '">' + c + '</div>';
+        });
+        if (classFilterMenu) classFilterMenu.innerHTML = html;
+
+        if (classFilterDropdown) {
+          initDropdown({
+            el: classFilterDropdown,
+            onSelect: function (val, text) {
+              currentClassFilter = val;
+              if (classFilterText) classFilterText.textContent = text;
+              renderAttendanceTable();
+            }
+          });
+        }
+      }
+
+      // 导出全部按钮
+      var exportAllBtn = document.getElementById('exportAllBtn');
+      if (exportAllBtn) {
+        exportAllBtn.addEventListener('click', function () {
+          var filtered = attendanceData;
+          if (currentClassFilter !== 'all') {
+            filtered = attendanceData.filter(function (r) { return r.className === currentClassFilter; });
+          }
+          showToast('已导出 ' + filtered.length + ' 条考勤记录', 'success');
+        });
+      }
+
+      // 初始渲染
+      renderAttendanceTable();
+      initClassFilter();
+
+      /* ==========================================================
+         7. ★ NEW: 窗口大小变化时刷新移动端下拉框 & 侧边栏
+         ========================================================== */
+      window.addEventListener('resize', function () {
+        if (window.innerWidth > 768) {
+          closeSidebar();
+        }
+        initMobileDropdown();
+        // 移动端弹窗关闭
+        if (!isMobile() && cameraModal) {
+          closeCameraModal();
+        }
+      });
+
+    })();
+  </script>
+
+  <script>
+    (function () {
+      var alertsList = document.getElementById('alertsList');
+      var alertsEmpty = document.getElementById('alertsEmpty');
+      var refreshAlertsBtn = document.getElementById('refreshAlertsBtn');
+
+      function formatTimeISO(iso) {
+        try { var d = new Date(iso); return d.toLocaleString(); } catch (e) { return iso; }
+      }
+
+      function renderAlertItem(a) {
+        var html = '<div class="panel" style="margin-bottom:10px;padding:12px;border:1px solid var(--color-border);">'
+          + '<div style="display:flex;align-items:center;gap:12px;">';
+        if (a.image_base64) {
+          html += '<img src="data:image/png;base64,' + a.image_base64 + '" style="width:120px;height:80px;object-fit:cover;border-radius:6px;"/>';
+        } else if (a.video_url) {
+          html += '<a href="' + (a.video_url || '#') + '" target="_blank" style="display:inline-block;width:120px;height:80px;background:#000;color:#fff;display:flex;align-items:center;justify-content:center;border-radius:6px;">视图</a>';
+        } else {
+          html += '<div style="width:120px;height:80px;background:var(--color-bg);border-radius:6px;display:flex;align-items:center;justify-content:center;color:var(--color-text-light);">缩略图</div>';
+        }
+        html += '<div style="flex:1;">'
+          + '<div style="font-weight:700;">' + (a.type || '告警') + ' <span style="font-weight:500;color:var(--color-text-light);">(' + (a.count || 1) + ')</span></div>'
+          + '<div style="font-size:13px;color:var(--color-text-sub);margin-top:6px;">' + (a.meta && a.meta.file ? a.meta.file : '') + '</div>'
+          + '<div style="font-size:12px;color:var(--color-text-light);margin-top:8px;">' + formatTimeISO(a.timestamp) + '</div>'
+          + '</div></div></div>';
+        return html;
+      }
+
+      function loadAlerts() {
+        fetch((window.API_BASE || 'http://127.0.0.1:7860') + '/alerts').then(function (r) { return r.json(); }).then(function (data) {
+          var arr = (data && data.alerts) || [];
+          if (!arr.length) {
+            alertsList.innerHTML = '';
+            alertsEmpty.style.display = 'block';
+            return;
+          }
+          alertsEmpty.style.display = 'none';
+          var html = arr.map(function (a) { return renderAlertItem(a); }).join('');
+          alertsList.innerHTML = html;
+        }).catch(function (err) {
+          console.error('loadAlerts error', err);
+        });
+      }
+
+      function prependAlert(a) {
+        alertsEmpty.style.display = 'none';
+        var node = document.createElement('div');
+        node.innerHTML = renderAlertItem(a);
+        var first = alertsList.firstChild;
+        if (first) alertsList.insertBefore(node.firstChild, first); else alertsList.appendChild(node.firstChild);
+      }
+
+      // Subscribe SSE
+      if (window.EventSource) {
+        try {
+          var es = new EventSource((window.API_BASE || 'http://127.0.0.1:7860') + '/alerts/stream');
+          es.onmessage = function (e) {
+            try {
+              var obj = JSON.parse(e.data);
+              prependAlert(obj);
+              showToast('新告警：' + (obj.type || '异常'), 'error');
+            } catch (ex) { console.error('sse parse', ex); }
+          };
+        } catch (e) { console.error('EventSource error', e); }
+      }
+
+      if (refreshAlertsBtn) refreshAlertsBtn.addEventListener('click', loadAlerts);
+
+      // initial load
+      setTimeout(loadAlerts, 800);
+    })();
+  </script>
+
+</body>
+
+</html>

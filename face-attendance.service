@@ -1,0 +1,26 @@
+[Unit]
+Description=Student Face Attendance System
+Documentation=file:///home/elf/Students-Action-Recognition-master/README.md
+After=network.target
+
+[Service]
+Type=simple
+User=elf
+WorkingDirectory=/home/elf/Students-Action-Recognition-master
+Environment="PATH=/home/elf/Students-Action-Recognition-master/venv/bin:/usr/bin:/bin"
+ExecStart=/home/elf/Students-Action-Recognition-master/venv/bin/python app.py
+ExecStop=/bin/kill -TERM $MAINPID
+Restart=always
+RestartSec=5
+StandardOutput=append:/home/elf/Students-Action-Recognition-master/log/stdout.log
+StandardError=append:/home/elf/Students-Action-Recognition-master/log/stderr.log
+
+# 安全设置
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/home/elf/Students-Action-Recognition-master/data
+ReadWritePaths=/home/elf/Students-Action-Recognition-master/log
+
+[Install]
+WantedBy=multi-user.target

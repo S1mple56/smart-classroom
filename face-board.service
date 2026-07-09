@@ -1,0 +1,19 @@
+[Unit]
+Description=Campus Smart Monitor (RK3588 Board)
+After=network.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/home/root/qiansai
+ExecStart=/usr/bin/python3 /home/root/qiansai/board_app.py
+ExecStop=/bin/kill -TERM $MAINPID
+Restart=always
+RestartSec=5
+Environment="PORT=5050"
+
+StandardOutput=append:/home/root/qiansai/log/stdout.log
+StandardError=append:/home/root/qiansai/log/stderr.log
+
+[Install]
+WantedBy=multi-user.target

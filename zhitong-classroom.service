@@ -1,0 +1,16 @@
+[Unit]
+Description=智瞳课堂 - Qt 触摸屏界面
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=forking
+User=elf
+WorkingDirectory=/home/elf/qiansai
+ExecStart=/bin/bash /home/elf/qiansai/start_qt.sh
+ExecStop=/bin/bash -c "kill $(cat /home/elf/qiansai/log/flask.pid 2>/dev/null) $(cat /home/elf/qiansai/log/qt.pid 2>/dev/null) 2>/dev/null"
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target

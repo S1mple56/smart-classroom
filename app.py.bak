@@ -1,0 +1,1471 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+校园智能监控系统 - 统一后端
+集成：人脸识别考勤 + YOLO 行为检测 + CNN 行为分类
+"""
+
+import os
+import sys
+import json
+import base64
+import hashlib
+import uuid
+import shutil
+import time
+import threading
+import queue
+import mimetypes
+import zipfile
+import urllib.request
+import urllib.error
+from io import BytesIO
+from glob import glob
+from datetime import datetime
+from collections import Counter
+
+import numpy as np
+from PIL import Image
+from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, Response, send_from_directory, session
+from flask_cors import CORS
+
+# ============================================================================
+# 路径配置
+# ============================================================================
+BASE_DIR = os.path.abspath(os.path.dirname(__file__))
+sys.path.insert(0, BASE_DIR)
+
+# 项目1路径
+UPLOAD_FOLDER = os.path.join(BASE_DIR, 'data', 'upload')
+RESULT_FOLDER = os.path.join(BASE_DIR, 'data')
+STUDENTS_INFO_FILE = os.path.join(BASE_DIR, 'data', 'students_info.json')
+FACE_ATTENDANCE_FILE = os.path.join(BASE_DIR, 'data', 'attendance_records.json')
+
+# 项目2路径
+TRY_ORIGIN = os.path.join(BASE_DIR, 'TRY', 'origin')
+TRY_TARGET = os.path.join(BASE_DIR, 'TRY', 'target')
+CAPTURES_DIR = os.path.join(BASE_DIR, 'data', 'captures')
+CAPTURES_ORIGINALS = os.path.join(CAPTURES_DIR, 'originals')
+CAPTURES_ANNOTATED = os.path.join(CAPTURES_DIR, 'annotated')
+CAPTURES_STATS = os.path.join(CAPTURES_DIR, 'stats')
+CAPTURES_ALERTS = os.path.join(CAPTURES_DIR, 'alerts')
+ALERTS_FILE = os.path.join(BASE_DIR, 'data', 'alerts.json')
+YOLO_ATTENDANCE_FILE = os.path.join(BASE_DIR, 'data', 'yolo_attendance_records.json')
+FACE_FEATURES_CACHE = os.path.join(BASE_DIR, 'data', 'face_features.json')
+
+# 导入 Dlib 人脸识别模块（替换旧的 Haar+直方图方案）
+import dlib_face_recognizer as face_rec
+
+# 用户数据库
+USER_DB_FILE = os.path.join(BASE_DIR, 'data', 'users.json')
+
+# 确保目录存在
+for d in [UPLOAD_FOLDER, TRY_ORIGIN, TRY_TARGET,
+          CAPTURES_ORIGINALS, CAPTURES_ANNOTATED, CAPTURES_STATS, CAPTURES_ALERTS]:
+    os.makedirs(d, exist_ok=True)
+
+# ============================================================================
+# Flask 应用
+# ============================================================================
+app = Flask(__name__, template_folder=os.path.join(BASE_DIR, 'templates'))
+app.secret_key = 'campus_monitor_secret_key'
+app.config['JSON_AS_ASCII'] = False
+app.config['PERMANENT_SESSION_LIFETIME'] = 86400 * 30  # 30 天
+CORS(app)
+
+@app.after_request
+def set_charset(response):
+    if response.content_type and 'text' in response.content_type:
+        if 'charset' not in response.content_type:
+            response.content_type = response.content_type + '; charset=utf-8'
+    return response
+
+# ============================================================================
+# 登录系统（JSON 用户数据库 + SHA256 密码哈希）
+# ============================================================================
+
+def _load_users():
+    if os.path.isfile(USER_DB_FILE):
+        with open(USER_DB_FILE, 'r', encoding='utf-8') as f:
+            return json.load(f)
+    return {}
+
+def _save_users(users):
+    with open(USER_DB_FILE, 'w', encoding='utf-8') as f:
+        json.dump(users, f, ensure_ascii=False, indent=2)
+
+def _hash_password(password, salt=None):
+    if salt is None:
+        salt = uuid.uuid4().hex[:16]
+    h = hashlib.sha256((salt + password).encode('utf-8')).hexdigest()
+    return salt, h
+
+def _verify_password(password, salt, expected_hash):
+    _, actual_hash = _hash_password(password, salt)
+    return actual_hash == expected_hash
+
+def _ensure_default_admin():
+    users = _load_users()
+    if not users:
+        salt, h = _hash_password('admin123')
+        users['admin'] = {
+            'username': 'admin',
+            'password_hash': h,
+            'salt': salt,
+            'role': 'admin',
+            'created_at': datetime.utcnow().isoformat()
+        }
+        _save_users(users)
+        return True
+    return False
+
+_ensure_default_admin()
+
+@app.route('/login')
+def login_page():
+    return render_template('login.html')
+
+@app.route('/api/login', methods=['POST'])
+def api_login():
+    data = request.get_json(silent=True) or {}
+    username = data.get('username', '').strip()
+    password = data.get('password', '')
+    remember = data.get('remember', False)
+    if not username or not password:
+        return jsonify({'ok': False, 'error': '请输入用户名和密码'}), 400
+    users = _load_users()
+    user = users.get(username)
+    if user and _verify_password(password, user.get('salt', ''), user.get('password_hash', '')):
+        session['logged_in'] = True
+        session['username'] = username
+        session['role'] = user.get('role', 'user')
+        if remember:
+            session.permanent = True  # 30 天有效期
+        return jsonify({'ok': True, 'role': user.get('role', 'user')})
+    return jsonify({'ok': False, 'error': '用户名或密码错误'}), 401
+
+@app.route('/api/register', methods=['POST'])
+def api_register():
+    """注册新用户（仅管理员可操作）"""
+    if not session.get('logged_in'):
+        return jsonify({'ok': False, 'error': '请先登录'}), 401
+    data = request.get_json(silent=True) or {}
+    username = data.get('username', '').strip()
+    password = data.get('password', '')
+    if not username or len(username) < 2:
+        return jsonify({'ok': False, 'error': '用户名至少2个字符'}), 400
+    if not password or len(password) < 4:
+        return jsonify({'ok': False, 'error': '密码至少4位'}), 400
+    users = _load_users()
+    if username in users:
+        return jsonify({'ok': False, 'error': '用户名已存在'}), 409
+    salt, h = _hash_password(password)
+    users[username] = {
+        'username': username,
+        'password_hash': h,
+        'salt': salt,
+        'role': 'user',
+        'created_at': datetime.utcnow().isoformat()
+    }
+    _save_users(users)
+    return jsonify({'ok': True, 'message': '注册成功'})
+
+@app.route('/api/change-password', methods=['POST'])
+def api_change_password():
+    """修改密码（支持登录页未登录状态下修改）"""
+    data = request.get_json(silent=True) or {}
+    old_password = data.get('old_password', '')
+    new_password = data.get('new_password', '')
+    username = data.get('username', '') or session.get('username', '')
+    if not username or not old_password or not new_password:
+        return jsonify({'ok': False, 'error': '请填写完整'}), 400
+    if len(new_password) < 4:
+        return jsonify({'ok': False, 'error': '新密码至少4位'}), 400
+    users = _load_users()
+    user = users.get(username)
+    if not user:
+        return jsonify({'ok': False, 'error': '用户不存在'}), 404
+    if not _verify_password(old_password, user.get('salt', ''), user.get('password_hash', '')):
+        return jsonify({'ok': False, 'error': '原密码错误'}), 403
+    salt, h = _hash_password(new_password)
+    user['password_hash'] = h
+    user['salt'] = salt
+    _save_users(users)
+    return jsonify({'ok': True, 'message': '密码修改成功'})
+
+@app.route('/api/user-info', methods=['GET'])
+def api_user_info():
+    if not session.get('logged_in'):
+        return jsonify({'ok': False, 'error': '未登录'}), 401
+    return jsonify({'ok': True, 'username': session.get('username'), 'role': session.get('role', 'user')})
+
+@app.route('/api/logout', methods=['POST'])
+def api_logout():
+    session.clear()
+    return jsonify({'ok': True})
+
+# ============================================================================
+# 管理员功能：用户列表、重置密码、主控密钥
+# ============================================================================
+MASTER_RESET_KEY = 'reset2024'
+
+@app.route('/api/admin/users', methods=['GET'])
+def api_admin_users():
+    """获取用户列表（管理员专用）"""
+    if session.get('role') != 'admin':
+        return jsonify({'ok': False, 'error': '无权限'}), 403
+    users = _load_users()
+    result = []
+    for k, v in users.items():
+        result.append({
+            'username': v.get('username', k),
+            'role': v.get('role', 'user'),
+            'created_at': v.get('created_at', '-')
+        })
+    return jsonify({'ok': True, 'users': result})
+
+@app.route('/api/admin/reset-password', methods=['POST'])
+def api_admin_reset_password():
+    """管理员重置用户密码"""
+    data = request.get_json(silent=True) or {}
+    target = data.get('username', '').strip()
+    new_password = data.get('new_password', '').strip()
+    is_master = data.get('master_key', '') == MASTER_RESET_KEY
+
+    # 两种方式：已登录管理员，或使用主控密钥
+    if not is_master and session.get('role') != 'admin':
+        return jsonify({'ok': False, 'error': '无权限，需要管理员登录或主控密钥'}), 403
+    if not target:
+        return jsonify({'ok': False, 'error': '请输入要重置的用户名'}), 400
+    users = _load_users()
+    if target not in users:
+        return jsonify({'ok': False, 'error': '用户「' + target + '」不存在'}), 404
+    if not new_password or len(new_password) < 4:
+        new_password = '123456'
+    salt, h = _hash_password(new_password)
+    users[target]['password_hash'] = h
+    users[target]['salt'] = salt
+    _save_users(users)
+    return jsonify({'ok': True, 'message': '密码已重置', 'new_password': new_password})
+
+@app.route('/api/admin/delete-user', methods=['POST'])
+def api_admin_delete_user():
+    """管理员删除用户"""
+    if session.get('role') != 'admin':
+        return jsonify({'ok': False, 'error': '无权限'}), 403
+    data = request.get_json(silent=True) or {}
+    target = data.get('username', '').strip()
+    if not target:
+        return jsonify({'ok': False, 'error': '请指定要删除的用户'}), 400
+    if target == session.get('username'):
+        return jsonify({'ok': False, 'error': '不能删除自己'}), 400
+    users = _load_users()
+    if target not in users:
+        return jsonify({'ok': False, 'error': '用户不存在'}), 404
+    del users[target]
+    _save_users(users)
+    return jsonify({'ok': True, 'message': '已删除用户「' + target + '」'})
+
+# ============================================================================
+# AI 智能助手（SiliconFlow 免费模型 / DeepSeek）
+# 优先使用 SiliconFlow 免费模型，其次 DeepSeek，都没有则走本地兜底
+# ============================================================================
+AI_API_KEY = os.environ.get('SILICONFLOW_API_KEY', '') or os.environ.get('DEEPSEEK_API_KEY', '')
+AI_API_URL = os.environ.get('AI_API_URL', 'https://api.siliconflow.cn/v1/chat/completions')
+AI_MODEL = os.environ.get('AI_MODEL', 'Qwen/Qwen2.5-7B-Instruct')
+
+def _build_system_prompt():
+    """构建包含当前系统数据的 system prompt"""
+    parts = [
+        '你是一个课堂智能监测系统的AI助手。系统部署在RK3588开发板上，集成了人脸考勤和课堂行为检测功能。',
+        '你可以帮助用户了解系统功能、查看数据、解答问题。回答要简洁友好。'
+    ]
+    # 注入学生数据摘要
+    try:
+        students = get_students_list()
+        if students:
+            names = [s.get('name', '?') for s in students[:20]]
+            parts.append(f'当前系统中有{len(students)}名学生：{", ".join(names)}。')
+    except:
+        pass
+    # 注入考勤摘要
+    try:
+        att_file = os.path.join(RESULT_FOLDER, 'attendance_records.json')
+        if os.path.isfile(att_file):
+            with open(att_file, 'r', encoding='utf-8') as f:
+                att_records = json.load(f)
+            if att_records:
+                recent = list(att_records.values())[-5:]
+                total_att = len(att_records)
+                today = datetime.utcnow().strftime('%Y-%m-%d')
+                today_key = f'recording_{today}'
+                today_count = 0
+                for k, v in att_records.items():
+                    if today in k:
+                        today_count = len(v.get('records', [])) if isinstance(v, dict) else 0
+                        break
+                parts.append(f'累计考勤记录{total_att}条。今天({today})考勤了{today_count}人。')
+    except:
+        pass
+    return '\n'.join(parts)
+
+@app.route('/api/chat', methods=['POST'])
+def api_chat():
+    data = request.get_json(silent=True) or {}
+    messages = data.get('messages', [])
+    if not messages:
+        return jsonify({'ok': False, 'error': 'empty messages'}), 400
+
+    system_prompt = _build_system_prompt()
+    full_messages = [{'role': 'system', 'content': system_prompt}] + messages
+
+    if AI_API_KEY:
+        try:
+            req_body = json.dumps({
+                'model': AI_MODEL,
+                'messages': full_messages,
+                'temperature': 0.7,
+                'max_tokens': 600
+            }).encode('utf-8')
+            req = urllib.request.Request(AI_API_URL, data=req_body, headers={
+                'Content-Type': 'application/json',
+                'Authorization': 'Bearer ' + AI_API_KEY
+            })
+            resp = urllib.request.urlopen(req, timeout=15)
+            resp_data = json.loads(resp.read().decode('utf-8'))
+            reply = resp_data['choices'][0]['message']['content']
+            return jsonify({'ok': True, 'reply': reply})
+        except Exception as e:
+            return jsonify({'ok': False, 'error': 'AI 服务调用失败: ' + str(e)}), 500
+    else:
+        # 无 API Key：本地模拟回复
+        reply = _local_reply(messages[-1].get('content', '') if messages else '')
+        return jsonify({'ok': True, 'reply': reply, 'local': True})
+
+def _local_reply(question):
+    """本地兜底回复（无 API Key 时）"""
+    q = question.lower()
+    if '出勤' in q or '考勤' in q:
+        return '您可以通过「考勤记录」页面查看详细考勤数据，或在「数据总览」页面看汇总统计。'
+    if '行为' in q or '举手' in q or '低头' in q:
+        return '课堂行为检测支持6类行为：举手、阅读、写作、使用手机、低头、靠在桌子上。您可以在「实时监控」页面查看效果，在「行为记录」页面查看历史。'
+    if '功能' in q or '介绍' in q:
+        return '本系统包含以下功能模块：\n1. 实时监控 - YOLO课堂行为检测\n2. 人脸考勤 - 人脸识别签到\n3. 异常告警 - 实时行为预警\n4. 学生档案 - 学生信息管理\n5. 考勤记录 - 历史考勤查询\n6. 行为记录 - 行为数据统计\n7. 数据总览 - 图表可视化\n8. 节能控制 - 智能节能管理\n\n请问您想了解哪个功能？'
+    if '你好' in q or 'hello' in q.lower():
+        return '您好！我是课堂智能监测系统的AI助手，有什么可以帮您的吗？'
+    return '这是一个课堂智能监测系统。如果您配置了 AI API Key（SiliconFlow 或 DeepSeek），我可以提供更智能的对话服务。当前功能包括人脸考勤、课堂行为检测、异常告警等。\n\n常用问题：\n- 今天的出勤情况\n- 系统有哪些功能\n- 行为检测能识别哪些行为'
+
+# ============================================================================
+# YOLO 模型初始化（项目2，可选）—— 使用 class_Detection_end 的 6 类行为检测模型
+# ============================================================================
+YOLO_MODEL_PATH = os.path.join(BASE_DIR, 'models', 'class_behavior_best.pt')
+EXPECTED_TRACKED = ("hand-raising", "reading", "writing", "using phone", "bowing the head", "leaning over the table")
+CHINESE_LABELS = {"hand-raising": "举手", "reading": "阅读", "writing": "写作", "using phone": "使用手机", "bowing the head": "低头", "leaning over the table": "靠在桌子上"}
+
+# 尝试导入 torch 判断设备
+try:
+    import torch
+    DEVICE = 'cuda:0' if torch.cuda.is_available() else 'cpu'
+except Exception:
+    DEVICE = 'cpu'
+
+# 预加载 YOLO 模型
+yolo_model = None
+TRACKED_CLASSES = EXPECTED_TRACKED
+try:
+    from ultralytics import YOLO
+    _yolo_available = True
+except ImportError:
+    YOLO = None
+    _yolo_available = False
+    print("提示: YOLO 依赖未安装 (ultralytics)，行为检测功能不可用，人脸考勤正常")
+
+if _yolo_available and os.path.isfile(YOLO_MODEL_PATH):
+    try:
+        yolo_model = YOLO(YOLO_MODEL_PATH)
+        TRACKED_CLASSES = tuple([str(v) for k, v in sorted(yolo_model.names.items(), key=lambda x: int(x[0]))])
+        print(f"YOLO 模型已加载: {YOLO_MODEL_PATH} ({DEVICE}) — 6类行为检测")
+    except Exception as e:
+        print(f"YOLO 模型加载失败: {e}")
+else:
+    if not _yolo_available:
+        print("YOLO 未启用: 缺少 ultralytics 依赖")
+    elif not os.path.isfile(YOLO_MODEL_PATH):
+        print(f"YOLO 模型未找到: {YOLO_MODEL_PATH}")
+
+# ============================================================================
+# OpenCV 摄像头（项目1）
+# ============================================================================
+_cameras = {}            # camera_id -> cv2.VideoCapture
+_cameras_lock = threading.Lock()
+
+try:
+    import cv2
+    _cv2_available = True
+except ImportError:
+    cv2 = None
+    _cv2_available = False
+    print("警告: opencv-python 未安装，服务端摄像头不可用")
+
+def get_camera(camera_id=0):
+    """按索引获取摄像头，支持多个摄像头并存（如内置+USB外接）"""
+    if not _cv2_available:
+        return None
+    with _cameras_lock:
+        if camera_id not in _cameras or _cameras[camera_id] is None:
+            try:
+                cap = cv2.VideoCapture(camera_id)
+                cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
+                cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
+                cap.set(cv2.CAP_PROP_FPS, 30)
+                if not cap.isOpened():
+                    cap.release()
+                    return None
+                _cameras[camera_id] = cap
+            except Exception:
+                return None
+    return _cameras.get(camera_id)
+
+def release_camera(camera_id=0):
+    """释放指定摄像头，不传 id 则释放全部"""
+    global _cameras
+    with _cameras_lock:
+        if camera_id is None:
+            for cap in _cameras.values():
+                if cap is not None:
+                    cap.release()
+            _cameras = {}
+        elif camera_id in _cameras and _cameras[camera_id] is not None:
+            _cameras[camera_id].release()
+            _cameras[camera_id] = None
+
+def generate_frames(camera_id=0):
+    camera = get_camera(camera_id)
+    if camera is None:
+        return
+    try:
+        while True:
+            with _cameras_lock:
+                cap = _cameras.get(camera_id)
+                if cap is None:
+                    break
+                success, frame = cap.read()
+            if not success:
+                time.sleep(0.05)
+                continue
+            ret, buffer = cv2.imencode('.jpg', frame, [cv2.IMWRITE_JPEG_QUALITY, 80])
+            if not ret:
+                continue
+            yield (b'--frame\r\nContent-Type: image/jpeg\r\n\r\n' + buffer.tobytes() + b'\r\n')
+    except GeneratorExit:
+        pass
+    finally:
+        release_camera(camera_id)
+
+# ============================================================================
+# 预警系统（项目2）
+# ============================================================================
+alerts_lock = threading.Lock()
+alerts_queue = queue.Queue()
+try:
+    if os.path.isfile(ALERTS_FILE):
+        with open(ALERTS_FILE, 'r', encoding='utf-8') as f:
+            alerts_store = json.load(f)
+    else:
+        alerts_store = []
+except Exception:
+    alerts_store = []
+
+def save_alerts():
+    try:
+        with alerts_lock:
+            with open(ALERTS_FILE, 'w', encoding='utf-8') as f:
+                json.dump(alerts_store, f, ensure_ascii=False, indent=2)
+    except Exception:
+        pass
+
+def push_alert(alert):
+    with alerts_lock:
+        alerts_store.insert(0, alert)
+        del alerts_store[200:]
+        save_alerts()
+    try:
+        alerts_queue.put(alert, block=False)
+    except Exception:
+        pass
+
+# ============================================================================
+# YOLO 考勤存储（项目2）
+# ============================================================================
+yolo_attendance_lock = threading.Lock()
+try:
+    if os.path.isfile(YOLO_ATTENDANCE_FILE):
+        with open(YOLO_ATTENDANCE_FILE, 'r', encoding='utf-8') as f:
+            yolo_attendance_store = json.load(f)
+    else:
+        yolo_attendance_store = []
+except Exception:
+    yolo_attendance_store = []
+
+def save_yolo_attendance():
+    try:
+        with yolo_attendance_lock:
+            with open(YOLO_ATTENDANCE_FILE, 'w', encoding='utf-8') as f:
+                json.dump(yolo_attendance_store, f, ensure_ascii=False, indent=2)
+    except Exception:
+        pass
+
+# ============================================================================
+# YOLO 工具函数（项目2）—— 简化版本，直接使用 yolo_model.predict()
+# ============================================================================
+
+def _stats_from_result(result):
+    """从单个 YOLO result 对象提取统计数据"""
+    counts = {}
+    try:
+        boxes = getattr(result, 'boxes', None)
+        if boxes is not None:
+            cls_ids = getattr(boxes, 'cls', None)
+            if hasattr(cls_ids, 'cpu'):
+                cls_ids = cls_ids.cpu().numpy().tolist()
+            elif hasattr(cls_ids, 'numpy'):
+                cls_ids = cls_ids.numpy().tolist()
+            elif isinstance(cls_ids, (list, tuple, np.ndarray)):
+                cls_ids = list(cls_ids)
+            else:
+                cls_ids = []
+            class_names = getattr(yolo_model, 'names', {}) if yolo_model else {}
+            for cid in cls_ids:
+                try:
+                    cname = class_names.get(int(cid), f'class_{int(cid)}')
+                except Exception:
+                    cname = f'class_{cid}'
+                counts[str(cname)] = counts.get(str(cname), 0) + 1
+    except Exception:
+        pass
+    return counts
+
+def _boxes_from_result(result, image):
+    """从 YOLO result 提取归一化边界框"""
+    boxes_out = []
+    try:
+        b = getattr(result, 'boxes', None)
+        if b is None:
+            return boxes_out
+        xyxy = b.xyxy.cpu().numpy()
+        confs = b.conf.cpu().numpy()
+        clsids = b.cls.cpu().numpy()
+        img_w, img_h = image.size
+        class_names = getattr(yolo_model, 'names', {}) if yolo_model else {}
+        for bb, cf, cid in zip(xyxy, confs, clsids):
+            x1, y1, x2, y2 = map(float, bb)
+            cid = int(cid)
+            if isinstance(class_names, (list, tuple)):
+                cname = class_names[cid] if cid < len(class_names) else str(cid)
+            elif isinstance(class_names, dict):
+                cname = class_names.get(cid, str(cid))
+            else:
+                cname = str(cid)
+            boxes_out.append({
+                'xyxy': [round(x1/(img_w or 1), 4), round(y1/(img_h or 1), 4), round(x2/(img_w or 1), 4), round(y2/(img_h or 1), 4)],
+                'conf': round(float(cf), 4), 'class_id': cid, 'class_name': str(cname)
+            })
+    except Exception:
+        pass
+    return boxes_out
+
+def _merge_stats(all_stats):
+    """合并多帧统计数据"""
+    total_counts = {}
+    max_per_frame = {}
+    for frame_counts in all_stats:
+        for cname, cnt in frame_counts.items():
+            total_counts[cname] = total_counts.get(cname, 0) + cnt
+            max_per_frame[cname] = max(max_per_frame.get(cname, 0), int(cnt))
+    tracked = set(TRACKED_CLASSES) if TRACKED_CLASSES else set(EXPECTED_TRACKED)
+    tracked_totals = {name: int(total_counts.get(name, 0)) for name in tracked}
+    tracked_max = {name: int(max_per_frame.get(name, 0)) for name in tracked}
+    is_video = len(all_stats) > 1
+    return {
+        "frame_count": int(len(all_stats)),
+        "total_detections": int(sum(total_counts.values())),
+        "counts": {k: int(v) for k, v in total_counts.items()},
+        "tracked_totals": tracked_totals,
+        "tracked_max_per_frame": tracked_max,
+        "display_counts": tracked_max if is_video else tracked_totals,
+        "display_mode": "max_per_frame" if is_video else "image_total",
+        "display_mode_label": "视频逐帧峰值" if is_video else "图片检测数量",
+    }
+
+def ensure_tracked_keys(stats):
+    """确保统计结果中包含所有预期行为类别"""
+    if not isinstance(stats, dict):
+        return stats
+    tracked = set(TRACKED_CLASSES) if TRACKED_CLASSES else set(EXPECTED_TRACKED)
+    for key in tracked:
+        for section in ['counts', 'tracked_totals', 'tracked_max_per_frame', 'display_counts']:
+            if section not in stats:
+                stats[section] = {}
+            if key not in stats[section]:
+                stats[section][key] = 0
+    return stats
+
+# ============================================================================
+# 人脸识别工具函数（已升级为 Dlib CNN 方案）
+# ============================================================================
+
+def allowed_file(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in {'png', 'jpg', 'jpeg', 'gif'}
+
+def update_student_info(person_id, name, student_id, class_name):
+    if os.path.exists(STUDENTS_INFO_FILE):
+        with open(STUDENTS_INFO_FILE, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+    else:
+        data = {'students': {}}
+    data['students'][person_id] = {'name': name, 'student_id': student_id, 'class': class_name}
+    with open(STUDENTS_INFO_FILE, 'w', encoding='utf-8') as f:
+        json.dump(data, f, ensure_ascii=False, indent=2)
+
+def get_students_list():
+    students = []
+    if os.path.exists(STUDENTS_INFO_FILE):
+        with open(STUDENTS_INFO_FILE, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+        for person_id, info in data.get('students', {}).items():
+            folder_path = os.path.join(UPLOAD_FOLDER, person_id)
+            photo_files = sorted([f for f in os.listdir(folder_path) if f.endswith('.jpg')]) if os.path.exists(folder_path) else []
+            students.append({
+                'person_id': person_id,
+                'name': info.get('name', '未知'),
+                'student_id': info.get('student_id', '未知'),
+                'class': info.get('class', '未知'),
+                'photo_count': len(photo_files),
+                'photos': photo_files,
+            })
+    return students
+
+def match_student(image_path):
+    """
+    使用 Dlib ResNet CNN 进行人脸匹配 —— 替代原来的 Haar + 直方图方案。
+    接口与旧版完全兼容。
+    """
+    return face_rec.match_face_dlib(
+        image_path=image_path,
+        features_cache_path=FACE_FEATURES_CACHE,
+        upload_dir=UPLOAD_FOLDER,
+        students_info_path=STUDENTS_INFO_FILE,
+    )
+
+def recognize_action(image_path, use_onnx=True):
+    try:
+        img = Image.open(image_path).convert('RGB')
+        img = img.resize((64, 64), Image.BILINEAR)
+        img_np = np.array(img).astype('float32') / 255
+        img_np = img_np.transpose((2, 0, 1))
+        input_data = np.expand_dims(img_np, axis=0)
+
+        if use_onnx and os.path.exists(os.path.join(BASE_DIR, 'model', 'cnn_model.onnx')):
+            import onnxruntime as ort
+            session = ort.InferenceSession(os.path.join(BASE_DIR, 'model', 'cnn_model.onnx'))
+            result = session.run([session.get_outputs()[0].name], {session.get_inputs()[0].name: input_data})
+            output = result[0][0]
+            pred_idx = int(np.argmax(output))
+        else:
+            import paddle
+            import cnn_model
+            layer_state_dict = paddle.load(os.path.join(BASE_DIR, 'model', 'cnn_layer.pdparams'))
+            model_cnn = cnn_model.CNN()
+            model_cnn.set_state_dict(layer_state_dict)
+            model_cnn.eval()
+            output = model_cnn(paddle.to_tensor(input_data)).numpy()[0]
+            pred_idx = int(np.argmax(output))
+
+        action_labels = ['听讲', '举手', '低头', '站立', '走动']
+        from scipy.special import softmax
+        prob = softmax(output)
+        return {'action': action_labels[pred_idx], 'confidence': f'{prob[pred_idx]*100:.1f}%'}
+    except Exception as e:
+        return {'action': '识别失败', 'confidence': '0%', 'error': str(e)}
+
+def add_face_attendance_record(student_id, student_name, student_class, status='present', timestamp=None):
+    if not timestamp:
+        timestamp = time.strftime('%Y-%m-%d %H:%M:%S')
+    if os.path.exists(FACE_ATTENDANCE_FILE):
+        with open(FACE_ATTENDANCE_FILE, 'r', encoding='utf-8') as f:
+            records = json.load(f)
+    else:
+        records = []
+    records.append({'student_id': student_id, 'student_name': student_name, 'student_class': student_class, 'status': status, 'timestamp': timestamp})
+    with open(FACE_ATTENDANCE_FILE, 'w', encoding='utf-8') as f:
+        json.dump(records, f, ensure_ascii=False, indent=2)
+
+def prepare_eval_data():
+    eval_dir = os.path.join(BASE_DIR, 'data', 'eval', 'students')
+    if os.path.exists(eval_dir):
+        shutil.rmtree(eval_dir)
+    for person_folder in os.listdir(UPLOAD_FOLDER):
+        src_path = os.path.join(UPLOAD_FOLDER, person_folder)
+        dst_path = os.path.join(eval_dir, person_folder)
+        if os.path.isdir(src_path):
+            shutil.copytree(src_path, dst_path)
+    zip_path = os.path.join(BASE_DIR, 'data', 'zipped-eval', 'students.zip')
+    os.makedirs(os.path.dirname(zip_path), exist_ok=True)
+    with zipfile.ZipFile(zip_path, 'w') as zf:
+        for person_folder in os.listdir(eval_dir):
+            person_path = os.path.join(eval_dir, person_folder)
+            for file in os.listdir(person_path):
+                if file.endswith('.jpg'):
+                    zf.write(os.path.join(person_path, file), f'students/{person_folder}/{file}')
+
+def read_prediction_results():
+    result_file = os.path.join(RESULT_FOLDER, 'result.txt')
+    if not os.path.exists(result_file):
+        return []
+    results = []
+    with open(result_file, 'r', encoding='utf-8') as f:
+        lines = f.readlines()
+    for line in lines[1:]:
+        parts = line.strip().split('\t')
+        if len(parts) >= 6:
+            results.append({'number': parts[0], 'name': parts[1], 'student_id': parts[2], 'class': parts[3], 'action': parts[4], 'confidence': parts[5]})
+    return results
+
+# ============================================================================
+# 模板过滤器
+# ============================================================================
+@app.template_filter('get_action_class')
+def get_action_class(action):
+    return {'听讲': 'listening', '举手': 'hand', '低头': 'down', '站立': 'standing', '走动': 'walking'}.get(action, 'walking')
+
+# ============================================================================
+# 路由：主页（SPA）
+# ============================================================================
+@app.route('/')
+def index():
+    if not session.get('logged_in'):
+        return redirect('/login')
+    students = get_students_list()
+    total_photos = sum(s.get('photo_count', 0) for s in students)
+    return render_template('index.html', students=students, total_photos=total_photos)
+
+# ============================================================================
+# 路由：学生管理（项目1）
+# ============================================================================
+@app.route('/api/students', methods=['GET'])
+def api_students():
+    students = get_students_list()
+    total_photos = sum(s.get('photo_count', 0) for s in students)
+    return jsonify({'students': students, 'total_photos': total_photos})
+
+@app.route('/api/students/add', methods=['POST'])
+def api_add_student():
+    student_name = request.form.get('student_name', '').strip()
+    student_id = request.form.get('student_id', '').strip()
+    student_class = request.form.get('student_class', '').strip()
+    if 'photos' not in request.files:
+        return jsonify({'ok': False, 'error': '请选择图片'}), 400
+    files = request.files.getlist('photos')
+    student_folder = os.path.join(UPLOAD_FOLDER, f'person_{student_id}')
+    os.makedirs(student_folder, exist_ok=True)
+    existing = [f for f in os.listdir(student_folder) if f.startswith('photo_') and f.endswith('.jpg')]
+    start_index = len(existing) + 1
+    count = 0
+    for i, file in enumerate(files):
+        if file.filename and allowed_file(file.filename):
+            file.save(os.path.join(student_folder, f'photo_{start_index + i}.jpg'))
+            count += 1
+    update_student_info(f'person_{student_id}', student_name, student_id, student_class)
+    # 重建人脸特征数据库
+    face_rec.rebuild_features_on_register(UPLOAD_FOLDER, STUDENTS_INFO_FILE, FACE_FEATURES_CACHE)
+    return jsonify({'ok': True, 'message': f'成功添加学生: {student_name}（{count} 张照片）'})
+
+@app.route('/api/students/delete/<person_id>', methods=['POST'])
+def api_delete_student(person_id):
+    student_folder = os.path.join(UPLOAD_FOLDER, person_id)
+    if os.path.exists(student_folder):
+        shutil.rmtree(student_folder)
+    if os.path.exists(STUDENTS_INFO_FILE):
+        with open(STUDENTS_INFO_FILE, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+        if person_id in data.get('students', {}):
+            name = data['students'][person_id].get('name', '未知')
+            del data['students'][person_id]
+            with open(STUDENTS_INFO_FILE, 'w', encoding='utf-8') as f:
+                json.dump(data, f, ensure_ascii=False, indent=2)
+            # 重建人脸特征数据库
+            face_rec.rebuild_features_on_register(UPLOAD_FOLDER, STUDENTS_INFO_FILE, FACE_FEATURES_CACHE)
+            return jsonify({'ok': True, 'message': f'已删除: {name}'})
+    return jsonify({'ok': False, 'error': '未找到该学生'}), 404
+
+@app.route('/api/students/clear', methods=['POST'])
+def api_clear_students():
+    if os.path.exists(UPLOAD_FOLDER):
+        shutil.rmtree(UPLOAD_FOLDER)
+        os.makedirs(UPLOAD_FOLDER)
+    result_file = os.path.join(RESULT_FOLDER, 'result.txt')
+    if os.path.exists(result_file):
+        os.remove(result_file)
+    # 清除人脸特征缓存
+    if os.path.exists(FACE_FEATURES_CACHE):
+        os.remove(FACE_FEATURES_CACHE)
+    return jsonify({'ok': True, 'message': '已清空所有学生数据'})
+
+@app.route('/api/students/photos/<person_id>/<filename>')
+def api_student_photo(person_id, filename):
+    """提供学生照片文件"""
+    folder = os.path.join(UPLOAD_FOLDER, person_id)
+    if not os.path.isdir(folder):
+        return jsonify({'error': 'not found'}), 404
+    safe_name = os.path.basename(filename)
+    return send_from_directory(folder, safe_name)
+
+@app.route('/api/students/delete-photo', methods=['POST'])
+def api_delete_photo():
+    """删除学生的一张照片"""
+    data = request.get_json(silent=True) or {}
+    person_id = data.get('person_id', '').strip()
+    filename = data.get('filename', '').strip()
+    if not person_id or not filename:
+        return jsonify({'ok': False, 'error': '缺少参数'}), 400
+    safe_name = os.path.basename(filename)
+    photo_path = os.path.join(UPLOAD_FOLDER, person_id, safe_name)
+    if not os.path.isfile(photo_path):
+        return jsonify({'ok': False, 'error': '照片不存在'}), 404
+    os.remove(photo_path)
+    # 重建人脸特征数据库
+    face_rec.rebuild_features_on_register(UPLOAD_FOLDER, STUDENTS_INFO_FILE, FACE_FEATURES_CACHE)
+    return jsonify({'ok': True, 'message': f'已删除 {safe_name}'})
+
+# ============================================================================
+# 路由：人脸考勤（项目1）
+# ============================================================================
+@app.route('/api/face/attendance', methods=['POST'])
+def api_face_attendance():
+    """人脸考勤：支持摄像头拍照、上传照片、学号三种模式"""
+    if 'captured_image' in request.form:
+        captured_image_data = request.form.get('captured_image')
+        if captured_image_data and captured_image_data.startswith('data:image/'):
+            try:
+                image_bytes = base64.b64decode(captured_image_data.split(',')[1])
+                temp_path = os.path.join(BASE_DIR, 'data', 'temp_recognize', 'temp_attendance.jpg')
+                os.makedirs(os.path.dirname(temp_path), exist_ok=True)
+                with open(temp_path, 'wb') as f:
+                    f.write(image_bytes)
+                matched = match_student(temp_path)
+                if matched['name'] != '未知':
+                    add_face_attendance_record(matched['student_id'], matched['name'], matched['class'])
+                    return jsonify({'ok': True, 'message': f'考勤成功！{matched["name"]}（匹配度 {matched["match_confidence"]}）', 'student': matched})
+                elif matched.get('is_stranger'):
+                    return jsonify({'ok': False, 'message': f'识别为陌生人（匹配度 {matched["match_confidence"]}）'})
+                else:
+                    return jsonify({'ok': False, 'message': '系统中尚无学生数据'})
+            except Exception as e:
+                return jsonify({'ok': False, 'message': f'图片处理失败: {str(e)}'})
+        return jsonify({'ok': False, 'message': '图片数据格式不正确'})
+
+    elif 'recognize_photo' in request.files:
+        file = request.files['recognize_photo']
+        if file.filename and allowed_file(file.filename):
+            temp_path = os.path.join(BASE_DIR, 'data', 'temp_recognize', 'temp_attendance.jpg')
+            os.makedirs(os.path.dirname(temp_path), exist_ok=True)
+            file.save(temp_path)
+            matched = match_student(temp_path)
+            if matched['name'] != '未知':
+                add_face_attendance_record(matched['student_id'], matched['name'], matched['class'])
+                return jsonify({'ok': True, 'message': f'考勤成功！{matched["name"]}（匹配度 {matched["match_confidence"]}）', 'student': matched})
+            elif matched.get('is_stranger'):
+                return jsonify({'ok': False, 'message': f'识别为陌生人（匹配度 {matched["match_confidence"]}）'})
+            else:
+                return jsonify({'ok': False, 'message': '系统中尚无学生数据'})
+        return jsonify({'ok': False, 'message': '文件格式不正确'})
+
+    elif 'student_id' in request.form:
+        student_id = request.form.get('student_id')
+        students_info = {}
+        if os.path.exists(STUDENTS_INFO_FILE):
+            with open(STUDENTS_INFO_FILE, 'r', encoding='utf-8') as f:
+                students_info = json.load(f).get('students', {})
+        for person_id, info in students_info.items():
+            if info.get('student_id') == student_id:
+                add_face_attendance_record(info['student_id'], info['name'], info['class'])
+                return jsonify({'ok': True, 'message': f'考勤成功！{info["name"]}'})
+        return jsonify({'ok': False, 'message': '未找到该学生'})
+
+    return jsonify({'ok': False, 'message': '缺少参数'}), 400
+
+@app.route('/api/face/attendance/video', methods=['POST'])
+def api_face_attendance_video():
+    """上传视频进行人脸考勤：每隔N秒抽帧识别人脸"""
+    if 'video' not in request.files:
+        return jsonify({'ok': False, 'error': '请上传视频文件'}), 400
+    file = request.files['video']
+    if not file.filename:
+        return jsonify({'ok': False, 'error': '文件名为空'}), 400
+    ext = file.filename.rsplit('.', 1)[-1].lower() if '.' in file.filename else ''
+    if ext not in ('mp4', 'avi', 'mov', 'mkv', 'flv', 'wmv', 'webm'):
+        return jsonify({'ok': False, 'error': f'不支持的视频格式: .{ext}'}), 400
+
+    # 帧采样间隔（秒）
+    interval_sec = float(request.form.get('interval', '2'))
+
+    temp_dir = os.path.join(BASE_DIR, 'data', 'temp_video')
+    os.makedirs(temp_dir, exist_ok=True)
+    safe_name = f"face_video_{int(time.time())}.{ext}"
+    video_path = os.path.join(temp_dir, safe_name)
+    file.save(video_path)
+
+    try:
+        import cv2
+        cap = cv2.VideoCapture(video_path)
+        if not cap.isOpened():
+            return jsonify({'ok': False, 'error': '无法打开视频文件'}), 400
+
+        fps = cap.get(cv2.CAP_PROP_FPS)
+        if fps <= 0:
+            fps = 25
+        frame_interval = max(1, int(fps * interval_sec))
+        total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+
+        recognized_students = {}
+        processed_frames = 0
+        frame_idx = 0
+
+        while True:
+            ret, frame = cap.read()
+            if not ret:
+                break
+            if frame_idx % frame_interval == 0:
+                processed_frames += 1
+                # 转换为RGB并保存临时帧（cv2.imwrite 会将数据原样写入，
+                # 所以必须先把 BGR 转为 RGB，否则后续 PIL 读取时红蓝通道颠倒）
+                frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+                frame_path = os.path.join(temp_dir, f'temp_frame_{frame_idx}.jpg')
+                cv2.imwrite(frame_path, frame_rgb)
+                try:
+                    matched = match_student(frame_path)
+                    if matched['name'] != '未知' and not matched.get('is_stranger'):
+                        sid = matched['student_id']
+                        if sid not in recognized_students:
+                            recognized_students[sid] = matched
+                            recognized_students[sid]['first_frame'] = frame_idx
+                            add_face_attendance_record(sid, matched['name'], matched['class'])
+                except Exception:
+                    pass
+                try:
+                    os.remove(frame_path)
+                except Exception:
+                    pass
+            frame_idx += 1
+
+        cap.release()
+
+        return jsonify({
+            'ok': True,
+            'message': f'视频处理完成，共 {total_frames} 帧，采样 {processed_frames} 帧，识别到 {len(recognized_students)} 人',
+            'recognized': list(recognized_students.values()),
+            'total_frames': total_frames,
+            'processed_frames': processed_frames,
+        })
+    except Exception as e:
+        return jsonify({'ok': False, 'error': f'视频处理失败: {str(e)}'}), 500
+    finally:
+        try:
+            os.remove(video_path)
+        except Exception:
+            pass
+
+@app.route('/api/face/records', methods=['GET'])
+def api_face_records():
+    records = []
+    if os.path.exists(FACE_ATTENDANCE_FILE):
+        with open(FACE_ATTENDANCE_FILE, 'r', encoding='utf-8') as f:
+            records = json.load(f)
+    records.sort(key=lambda x: x.get('timestamp', ''), reverse=True)
+    return jsonify({'records': records})
+
+@app.route('/api/face/attendance/summary', methods=['GET'])
+def api_face_attendance_summary():
+    """考勤汇总：所有已注册学生 + 当日考勤状态"""
+    today = time.strftime('%Y-%m-%d')
+    # 读取当日考勤记录
+    attended_set = {}
+    if os.path.exists(FACE_ATTENDANCE_FILE):
+        with open(FACE_ATTENDANCE_FILE, 'r', encoding='utf-8') as f:
+            records = json.load(f)
+        for r in records:
+            ts = r.get('timestamp', '')
+            if ts.startswith(today):
+                sid = r.get('student_id', '')
+                if sid and sid not in attended_set:
+                    attended_set[sid] = {
+                        'status': r.get('status', 'present'),
+                        'timestamp': ts
+                    }
+    # 读取所有学生
+    students_all = []
+    if os.path.exists(STUDENTS_INFO_FILE):
+        with open(STUDENTS_INFO_FILE, 'r', encoding='utf-8') as f:
+            all_info = json.load(f).get('students', {})
+        for person_id, info in all_info.items():
+            sid = info.get('student_id', '')
+            if sid in attended_set:
+                status = attended_set[sid]['status']
+                check_time = attended_set[sid]['timestamp']
+            else:
+                status = 'absent'
+                check_time = ''
+            students_all.append({
+                'student_name': info.get('name', ''),
+                'student_id': sid,
+                'student_class': info.get('class', ''),
+                'status': status,
+                'check_time': check_time
+            })
+    return jsonify({'students': students_all, 'date': today})
+
+@app.route('/api/quick_recognize', methods=['POST'])
+def api_quick_recognize():
+    if 'recognize_photo' not in request.files:
+        return jsonify({'ok': False, 'error': '请选择图片'}), 400
+    file = request.files['recognize_photo']
+    if not file.filename or not allowed_file(file.filename):
+        return jsonify({'ok': False, 'error': '文件格式不正确'}), 400
+    temp_path = os.path.join(BASE_DIR, 'data', 'temp_recognize', 'temp.jpg')
+    os.makedirs(os.path.dirname(temp_path), exist_ok=True)
+    file.save(temp_path)
+    matched = match_student(temp_path)
+    action_result = recognize_action(temp_path)
+    with open(temp_path, 'rb') as f:
+        image_data = base64.b64encode(f.read()).decode('utf-8')
+    return jsonify({
+        'ok': True,
+        'student': matched,
+        'action': action_result['action'],
+        'confidence': action_result['confidence'],
+        'image_data': image_data
+    })
+
+# ============================================================================
+# 路由：CNN 批量识别（项目1）
+# ============================================================================
+@app.route('/api/cnn/predict', methods=['POST'])
+def api_cnn_predict():
+    if not os.listdir(UPLOAD_FOLDER):
+        return jsonify({'ok': False, 'error': '请先添加学生数据'}), 400
+    prepare_eval_data()
+    import subprocess
+    try:
+        result = subprocess.run([sys.executable, 'main.py'], capture_output=True, text=True, cwd=BASE_DIR)
+        if result.returncode == 0:
+            return jsonify({'ok': True, 'results': read_prediction_results()})
+        return jsonify({'ok': False, 'error': result.stderr}), 500
+    except Exception as e:
+        return jsonify({'ok': False, 'error': str(e)}), 500
+
+@app.route('/api/cnn/results', methods=['GET'])
+def api_cnn_results():
+    return jsonify({'results': read_prediction_results()})
+
+# ============================================================================
+# 路由：YOLO 实时检测（项目2）
+# ============================================================================
+@app.route('/api/yolo/model-info', methods=['GET'])
+def api_yolo_model_info():
+    return jsonify({
+        'model_path': YOLO_MODEL_PATH,
+        'model_name': os.path.basename(YOLO_MODEL_PATH),
+        'model_classes': getattr(yolo_model, 'names', None) if yolo_model else None,
+    })
+
+@app.route('/api/yolo/predict', methods=['POST'])
+def api_yolo_predict():
+    if not yolo_model:
+        return jsonify({'error': 'YOLO 模型未加载'}), 503
+    payload = request.get_json(silent=True) or {}
+    filename = payload.get('file')
+    media_type = payload.get('type', 'image')
+    if not filename:
+        return jsonify({'error': 'file missing'}), 400
+    safe_name = os.path.basename(filename)
+    src_path = os.path.join(TRY_ORIGIN, safe_name)
+    if not os.path.isfile(src_path):
+        return jsonify({'error': 'file not found'}), 404
+
+    if media_type == 'image':
+        # 使用 class_Detection_end 的简化推理方式
+        import cv2
+        data = np.fromfile(src_path, np.uint8)
+        img_bgr = cv2.imdecode(data, cv2.IMREAD_COLOR)
+        result = yolo_model.predict(img_bgr, conf=0.3, verbose=False)[0]
+        stats = _stats_from_result(result)
+        stats = ensure_tracked_keys(stats)
+        try:
+            annotated = result.plot()
+            image = Image.fromarray(annotated)
+        except Exception:
+            image = Image.open(src_path).convert('RGB')
+        buffer = BytesIO()
+        image.save(buffer, format='PNG')
+        image_b64 = base64.b64encode(buffer.getvalue()).decode('utf-8')
+        boxes_out = _boxes_from_result(result, image)
+
+        if stats.get('display_counts', {}).get('leaning over the table', 0) > 0:
+            push_alert({'id': int(time.time()*1000), 'timestamp': datetime.utcnow().isoformat()+'Z', 'level': 'warning', 'type': 'abnormal', 'count': stats['display_counts']['leaning over the table'], 'meta': {'source': 'predict', 'file': safe_name}, 'image_base64': image_b64})
+
+        return jsonify({'image_base64': image_b64, 'stats': stats, 'boxes': boxes_out})
+
+    elif media_type == 'video':
+        import cv2
+        before_ts = time.time()
+        cap = cv2.VideoCapture(src_path)
+        fps = cap.get(cv2.CAP_PROP_FPS) or 25.0
+        w = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+        h = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+        out_name = safe_name.rsplit('.', 1)[0] + '_annotated.mp4'
+        out_path = os.path.join(TRY_TARGET, out_name)
+        fourcc = cv2.VideoWriter_fourcc(*'avc1')
+        writer = cv2.VideoWriter(out_path, fourcc, fps, (w, h))
+        all_stats = []
+        while True:
+            ok, frame = cap.read()
+            if not ok:
+                break
+            result = yolo_model.predict(frame, conf=0.3, verbose=False)[0]
+            stats = _stats_from_result(result)
+            all_stats.append(stats)
+            annotated = result.plot()
+            writer.write(annotated)
+        cap.release()
+        writer.release()
+        stats = _merge_stats(all_stats)
+        stats = ensure_tracked_keys(stats)
+        rel_path = os.path.relpath(out_path, TRY_TARGET).replace('\\', '/')
+        return jsonify({'video_url': f'/api/yolo/target/{rel_path}', 'stats': stats})
+
+    return jsonify({'error': f'unsupported type: {media_type}'}), 400
+
+@app.route('/api/yolo/upload-video', methods=['POST'])
+def api_yolo_upload_video():
+    """上传视频文件并进行YOLO行为检测"""
+    if not yolo_model:
+        return jsonify({'error': 'YOLO 模型未加载'}), 503
+    if 'video' not in request.files:
+        return jsonify({'error': '请上传视频文件'}), 400
+    file = request.files['video']
+    if not file.filename:
+        return jsonify({'error': '文件名为空'}), 400
+    ext = file.filename.rsplit('.', 1)[-1].lower() if '.' in file.filename else ''
+    if ext not in ('mp4', 'avi', 'mov', 'mkv', 'flv', 'wmv', 'webm'):
+        return jsonify({'error': f'不支持的视频格式: .{ext}'}), 400
+
+    safe_name = f"upload_{int(time.time())}_{file.filename}"
+    src_path = os.path.join(TRY_ORIGIN, safe_name)
+    file.save(src_path)
+
+    try:
+        import cv2
+        cap = cv2.VideoCapture(src_path)
+        fps = cap.get(cv2.CAP_PROP_FPS) or 25.0
+        w = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+        h = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+        out_name = safe_name.rsplit('.', 1)[0] + '_annotated.mp4'
+        out_path = os.path.join(TRY_TARGET, out_name)
+        fourcc = cv2.VideoWriter_fourcc(*'avc1')
+        writer = cv2.VideoWriter(out_path, fourcc, fps, (w, h))
+        all_stats = []
+        per_frame = []
+        class_names = getattr(yolo_model, 'names', {})
+
+        fi = 0
+        while True:
+            ok, frame = cap.read()
+            if not ok:
+                break
+            result = yolo_model.predict(frame, conf=0.3, verbose=False)[0]
+            f_stats = _stats_from_result(result)
+            all_stats.append(f_stats)
+            per_frame.append({'frame': fi, 'detections': f_stats})
+            annotated = result.plot()
+            writer.write(annotated)
+            fi += 1
+
+        cap.release()
+        writer.release()
+        stats = _merge_stats(all_stats)
+        stats = ensure_tracked_keys(stats)
+        rel_path = os.path.relpath(out_path, TRY_TARGET).replace('\\', '/')
+
+        return jsonify({
+            'ok': True,
+            'video_url': f'/api/yolo/target/{rel_path}',
+            'stats': stats,
+            'per_frame': per_frame,
+            'frame_count': len(all_stats),
+        })
+    except Exception as e:
+        return jsonify({'error': f'推理失败: {str(e)}'}), 500
+    finally:
+        try:
+            if os.path.isfile(src_path):
+                os.remove(src_path)
+        except Exception:
+            pass
+
+@app.route('/api/yolo/predict-frame', methods=['POST'])
+def api_yolo_predict_frame():
+    if not yolo_model:
+        return jsonify({'error': 'YOLO 模型未加载'}), 503
+    payload = request.get_json(silent=True) or {}
+    image_data = payload.get('image')
+    if not image_data:
+        return jsonify({'error': 'image missing'}), 400
+    if isinstance(image_data, str) and image_data.startswith('data:'):
+        image_b64 = image_data.split(',', 1)[1]
+    else:
+        image_b64 = image_data
+    try:
+        decoded = base64.b64decode(image_b64)
+        img = Image.open(BytesIO(decoded)).convert('RGB')
+    except Exception as e:
+        return jsonify({'error': 'invalid image', 'detail': str(e)}), 400
+
+    # 直接使用 YOLO 模型推理（BGR 格式）
+    arr = np.asarray(img)[:, :, ::-1].copy()
+    result = yolo_model.predict(arr, conf=0.15, verbose=False)[0]
+    stats = _stats_from_result(result)
+    stats = _merge_stats([stats])
+    stats = ensure_tracked_keys(stats)
+    try:
+        annotated = result.plot()
+        out_img = Image.fromarray(annotated)
+    except Exception:
+        out_img = img
+    buffer = BytesIO()
+    out_img.save(buffer, format='PNG')
+    boxes_out = _boxes_from_result(result, out_img)
+
+    if stats.get('display_counts', {}).get('leaning over the table', 0) > 0:
+        push_alert({'id': int(time.time()*1000), 'timestamp': datetime.utcnow().isoformat()+'Z', 'level': 'warning', 'type': 'abnormal', 'count': stats['display_counts']['leaning over the table'], 'meta': {'source': 'predict-frame'}})
+
+    return jsonify({'image_base64': base64.b64encode(buffer.getvalue()).decode('utf-8'), 'stats': stats, 'boxes': boxes_out})
+
+@app.route('/api/yolo/capture', methods=['POST', 'OPTIONS'])
+def api_yolo_capture():
+    if request.method == 'OPTIONS':
+        return ('', 200)
+    try:
+        ct = (request.headers.get('Content-Type') or '').lower()
+        if ct.startswith('text/plain'):
+            image_data = request.get_data(as_text=True)
+        else:
+            payload = request.get_json(silent=True) or {}
+            image_data = payload.get('image')
+        if not image_data:
+            return jsonify({'error': 'image missing'}), 400
+        if isinstance(image_data, str) and image_data.startswith('data:'):
+            image_b64 = image_data.split(',', 1)[1]
+        else:
+            image_b64 = image_data
+        decoded = base64.b64decode(image_b64)
+        img = Image.open(BytesIO(decoded)).convert('RGB')
+
+        timestamp = datetime.utcnow().strftime('%Y%m%dT%H%M%S%f')
+        orig_name = f'capture_{timestamp}.png'
+        img.save(os.path.join(CAPTURES_ORIGINALS, orig_name))
+
+        arr = np.asarray(img)[:, :, ::-1].copy()
+        result = yolo_model.predict(arr, conf=0.15, verbose=False)[0]
+        stats = _stats_from_result(result)
+        stats = _merge_stats([stats])
+        stats = ensure_tracked_keys(stats)
+        try:
+            out_img = Image.fromarray(result.plot())
+        except Exception:
+            out_img = img
+        annot_name = f'capture_annot_{timestamp}.png'
+        out_img.save(os.path.join(CAPTURES_ANNOTATED, annot_name))
+
+        stats_name = f'capture_stats_{timestamp}.json'
+        with open(os.path.join(CAPTURES_STATS, stats_name), 'w', encoding='utf-8') as f:
+            json.dump(stats, f, ensure_ascii=False, indent=2)
+
+        if stats.get('display_counts', {}).get('leaning over the table', 0) > 0:
+            alert = {'id': int(time.time()*1000), 'timestamp': datetime.utcnow().isoformat()+'Z', 'level': 'warning', 'type': 'abnormal', 'count': stats['display_counts']['leaning over the table'], 'meta': {'source': 'capture', 'file': orig_name}}
+            try:
+                alert_path = os.path.join(CAPTURES_ALERTS, f'alert_annot_{timestamp}.png')
+                shutil.copy2(os.path.join(CAPTURES_ANNOTATED, annot_name), alert_path)
+                with open(alert_path, 'rb') as f:
+                    alert['image_base64'] = base64.b64encode(f.read()).decode('utf-8')
+            except Exception:
+                pass
+            push_alert(alert)
+
+        return jsonify({'ok': True, 'original': f'/api/yolo/captures/originals/{orig_name}', 'annotated': f'/api/yolo/captures/annotated/{annot_name}', 'stats': stats, 'stats_url': f'/api/yolo/captures/stats/{stats_name}'})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/yolo/captures/<path:filename>')
+def api_yolo_captures(filename):
+    return send_from_directory(CAPTURES_DIR, filename)
+
+@app.route('/api/yolo/list', methods=['GET'])
+def api_yolo_list():
+    images, videos = [], []
+    for name in sorted(os.listdir(TRY_ORIGIN)):
+        path = os.path.join(TRY_ORIGIN, name)
+        if not os.path.isfile(path):
+            continue
+        media_type, _ = mimetypes.guess_type(path)
+        if media_type and media_type.startswith('image'):
+            images.append(name)
+        elif media_type and media_type.startswith('video'):
+            videos.append(name)
+    return jsonify({'images': images, 'videos': videos})
+
+@app.route('/api/yolo/origin/<path:filename>')
+def api_yolo_origin(filename):
+    return send_from_directory(TRY_ORIGIN, filename)
+
+@app.route('/api/yolo/target/<path:filename>')
+def api_yolo_target(filename):
+    return send_from_directory(TRY_TARGET, filename)
+
+@app.route('/api/yolo/stats', methods=['GET'])
+def api_yolo_stats():
+    """返回 YOLO 检测统计总数"""
+    total = 0
+    try:
+        for root, _, files in os.walk(CAPTURES_STATS):
+            for fn in files:
+                if fn.endswith('.json'):
+                    try:
+                        with open(os.path.join(root, fn), 'r', encoding='utf-8') as f:
+                            s = json.load(f)
+                        total += int(s.get('total_detections', 0))
+                    except Exception:
+                        pass
+    except Exception:
+        pass
+    return jsonify({'total': total})
+
+# ============================================================================
+# 路由：预警系统（项目2）
+# ============================================================================
+@app.route('/api/alerts', methods=['GET', 'POST'])
+def api_alerts():
+    if request.method == 'GET':
+        with alerts_lock:
+            return jsonify({'alerts': alerts_store})
+    payload = request.get_json(silent=True) or {}
+    alert = {
+        'id': payload.get('id') or int(time.time()*1000),
+        'timestamp': payload.get('timestamp') or datetime.utcnow().isoformat()+'Z',
+        'level': payload.get('level') or 'warning',
+        'type': payload.get('type') or 'abnormal',
+        'count': int(payload.get('count') or 1),
+        'meta': payload.get('meta') or {},
+    }
+    if payload.get('image_base64'):
+        alert['image_base64'] = payload['image_base64']
+    push_alert(alert)
+    return jsonify({'ok': True, 'alert': alert}), 201
+
+@app.route('/api/alerts/stream')
+def api_alerts_stream():
+    def gen():
+        while True:
+            try:
+                alert = alerts_queue.get(timeout=30)
+            except queue.Empty:
+                yield ": heartbeat\n\n"
+                continue
+            try:
+                data = json.dumps(alert, ensure_ascii=False)
+            except Exception:
+                data = json.dumps({'id': alert.get('id')})
+            yield f"data: {data}\n\n"
+    return Response(gen(), mimetype='text/event-stream', headers={'Cache-Control': 'no-cache', 'X-Accel-Buffering': 'no'})
+
+# ============================================================================
+# 路由：YOLO 考勤（项目2）
+# ============================================================================
+@app.route('/api/yolo/attendance/mark', methods=['POST'])
+def api_yolo_attendance_mark():
+    payload = request.get_json(silent=True) or {}
+    record = {
+        'id': int(time.time()*1000),
+        'timestamp': datetime.utcnow().isoformat()+'Z',
+        'original': payload.get('original'),
+        'annotated': payload.get('annotated'),
+        'stats': payload.get('stats') or {},
+        'meta': payload.get('meta') or {},
+    }
+    with yolo_attendance_lock:
+        yolo_attendance_store.insert(0, record)
+        del yolo_attendance_store[2000:]
+        save_yolo_attendance()
+    return jsonify({'ok': True, 'record': record}), 201
+
+@app.route('/api/yolo/attendance/records', methods=['GET'])
+def api_yolo_attendance_records():
+    with yolo_attendance_lock:
+        return jsonify({'records': yolo_attendance_store})
+
+# ============================================================================
+# 路由：摄像头（项目1）
+# ============================================================================
+@app.route('/video_feed')
+def video_feed():
+    camera_id = request.args.get('camera', 0, type=int)
+    camera = get_camera(camera_id)
+    if camera is None:
+        return "摄像头不可用 (索引: {})".format(camera_id), 503
+    return Response(generate_frames(camera_id), mimetype='multipart/x-mixed-replace; boundary=frame')
+
+@app.route('/video_snapshot')
+def video_snapshot():
+    camera_id = request.args.get('camera', 0, type=int)
+    with _cameras_lock:
+        cap = _cameras.get(camera_id)
+        if cap is None or not cap.isOpened():
+            return "摄像头不可用 (索引: {})".format(camera_id), 503
+        success, frame = cap.read()
+    if not success:
+        return "截图失败", 500
+    ret, buffer = cv2.imencode('.jpg', frame, [cv2.IMWRITE_JPEG_QUALITY, 90])
+    if not ret:
+        return "编码失败", 500
+    return Response(buffer.tobytes(), mimetype='image/jpeg', headers={'Cache-Control': 'no-cache'})
+
+@app.route('/video_stop')
+def video_stop():
+    camera_id = request.args.get('camera', 0, type=int)
+    release_camera(camera_id)
+    return jsonify({'ok': True})
+
+# ============================================================================
+# 路由：节能控制（PC 版：仅模拟模式，无硬件 GPIO）
+# ============================================================================
+@app.route('/api/energy/status', methods=['GET'])
+def api_energy_status():
+    return jsonify({
+        'person_count': 0,
+        'light': False, 'fan': False, 'ac': False,
+        'simulate': True, 'model_loaded': False,
+        'fps': 0, 'message': 'PC 端不支持节能控制，请使用 RK3588 开发板'
+    })
+
+@app.route('/api/energy/override', methods=['POST'])
+def api_energy_override():
+    return jsonify({'ok': False, 'error': 'PC 端不支持节能控制'})
+
+@app.route('/api/energy/toggle-simulate', methods=['POST'])
+def api_energy_toggle_simulate():
+    return jsonify({'ok': False, 'error': 'PC 端不支持节能控制'})
+
+# ============================================================================
+# 启动
+# ============================================================================
+if __name__ == '__main__':
+    app.run(debug=True, host='0.0.0.0', port=5000, threaded=True)
